@@ -24,12 +24,16 @@ object ArgModifier{
 
   trait NotEmpty[T] extends ArgModifier[T]
 
+  /** just a marker */
+  trait Optional[T] extends ArgModifier[T]
+
   def Positive   [T](implicit pos: Positive[T])     = pos
   def NonNegative[T](implicit nneg: NonNegative[T]) = nneg
   def Integer    [T](implicit int: Integer[T])      = int
 
   def NotEmpty   [T](implicit ne: NotEmpty[T])      = ne
 
+  def Optional   [T](implicit opt: Optional[T])     = opt
 
   implicit def numericCanBePositive   [N](implicit num: Numeric[N]): Positive[N]     = new Positive[N] {
     def test(v: N) = num.gt(v, num.zero)
@@ -44,4 +48,6 @@ object ArgModifier{
   implicit def iterableCanBeEmpty[I <: Iterable[_]]                : NotEmpty[I] = new NotEmpty[I] {
     def test(v: I) = v.nonEmpty
   }
+
+  implicit def anyCanBeMarkedOptional[T]: Optional[T] = new Optional[T]{  }
 }

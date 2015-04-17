@@ -30,18 +30,23 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
       )
 
 
-      protected var blockSize: Int = 1
-      protected var kSize: Int = 1
-      protected var k: Double = 0
-      protected var borderType: BorderExtrapolationMethod = borderTypes.head
+      protected var _blockSize: Int = 1
+      protected var _kSize: Int = 1
+      protected var _k: Double = 0
+      protected var _borderType: BorderExtrapolationMethod = borderTypes.head
 
-      def kBounds: Option[(MinCap[Double], MaxCap[Double])] // MinCap(-10.0), MaxCap(10.0)
+      final def blockSize = _blockSize
+      final def kSize = _kSize
+      final def k = _k
+      final def borderType = _borderType
+
+      def kBounds: Option[(MinCap[Double], MaxCap[Double])]
       protected def kArgs = kBounds.map(p => p._1 &: p._2 &: Harris.K) getOrElse Harris.K
 
-      lazy val blockSizeBuilder  = mkNumericControl(Harris.BlockSize)(blockSize, blockSize = _)
-      lazy val kSizeBuilder      = mkNumericControl(Harris.KSize)(kSize, kSize = _)
-      lazy val kBuilder          = mkNumericControl(kArgs)(k, k = _)
-      lazy val borderTypeBuilder = mkListControl(Harris.BorderType, borderTypes)(borderType = _, _.asString)
+      lazy val blockSizeBuilder  = mkNumericControl(Harris.BlockSize)(blockSize, _blockSize = _)
+      lazy val kSizeBuilder      = mkNumericControl(Harris.KSize)(kSize, _kSize = _)
+      lazy val kBuilder          = mkNumericControl(kArgs)(k, _k = _)
+      lazy val borderTypeBuilder = mkListControl(Harris.BorderType, borderTypes)(_borderType = _, _.asString)
 
       def borderTypes = (BorderExtrapolationMethod.Default :: BorderExtrapolationMethod.all).distinct
 

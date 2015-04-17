@@ -1,6 +1,6 @@
-name := "sift"
+name := "common"
 
-version := "0.0"
+version := "0.1"
 
 CommonSettings.settings
 

@@ -31,14 +31,29 @@ trait ImageIO{
  *                Creating Mat
  */
 
+@deprecated
 trait MatCreation{
-  implicit class BufferedImageToMatWrapper(img: BufferedImage){
-    def toMat: Mat = {
-      val m = new Mat(img.getHeight, img.getWidth, img.getType) // ?? type ??
-      m put(0, 0, img.getData.getDataBuffer.asInstanceOf[DataBufferByte].getData)
-      m
-    }
-  }
+//  implicit class BufferedImageToMatWrapper(img: BufferedImage){
+//    def toMat: Mat = {
+//      val m = new Mat(img.getHeight, img.getWidth, img.getType)
+//      m put(0, 0, img.getData.getDataBuffer.asInstanceOf[DataBufferByte].getData) // todo ??? DataBufferByte
+//      m
+//    }
+//  }
+
+//  def mkMat[N: CanFillMat](width: Int, height: Int, tpe: Int, data: Array[N]): Mat =
+//    new Mat(height, width, tpe) $$ ( implicitly[CanFillMat[N]].mk(_, data) )
+//
+//  trait CanFillMat[From]{
+//    def mk(mat: Mat, arr: Array[From])
+//  }
+//
+//  trait CanExtractMat[As]{
+//    def get(mat: Mat): Array[As]
+//  }
+
+  //{ _.put(0, 0, data) }
+  //.get(0, 0, data)
 }
 
 // from nu.pattern/opencv/srcs/opencv-2.4.9-7-sources.jar!/org/opencv/highgui/Highgui.java
@@ -103,10 +118,10 @@ trait CornerDetection{
    *
    * @see <a href="http://docs.opencv.org/modules/imgproc/doc/feature_detection.html#cornerharris">org.opencv.imgproc.Imgproc.cornerHarris</a>
    */
-  def cornerHarris(src: Mat, blockSize: Int, ksize: Int, k: Double, borderType: Option[Int] = None): Mat = {
+  def cornerHarris(src: Mat, blockSize: Int, ksize: Int, k: Double, borderType: Option[BorderExtrapolationMethod] = None): Mat = {
     val dist = src.clone()
-    borderType map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
-                    Imgproc.cornerHarris(src, dist, blockSize, ksize, k)
+    borderType map (_.value) map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
+                                  Imgproc.cornerHarris(src, dist, blockSize, ksize, k)
     dist
   }
 

@@ -1,6 +1,7 @@
 package feh.tec.cvis.gui
 
 import java.awt.Dimension
+import java.awt.image.BufferedImage
 import java.io.File
 import feh.dsl.swing.{SwingFrameAppCreation, AbstractGUI}
 import feh.util._
@@ -27,9 +28,13 @@ trait GenericSimpleApp extends App with AbstractGUI with GenericConfigurationGUI
     type Preview <: Component
     type Config  <: GenericConfigurationPanel
 
+    val image: BufferedImage
+    def modifiedImage: BufferedImage
+    
     val original: Preview
     val modified: Preview
     val configurations: Config
+    
 
     protected def filesDropped(files: List[File])
 

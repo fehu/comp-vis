@@ -5,7 +5,7 @@ import feh.dsl.swing.{AbstractGUI, SwingAppBuildingEnvironment}
 import scala.swing.Panel
 
 trait ConfigurationPanel extends Panel{
-  def updateImage: Array[Array[Byte]] => Unit
+//  def updateImage: Array[Array[Byte]] => Unit
 
 }
 
