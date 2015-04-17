@@ -6,6 +6,6 @@ object CommonSettings {
     organization := "feh.tec",
     scalaVersion := "2.11.6",
     resolvers           += "Fehu's github repo" at "http://fehu.github.io/repo",
-    libraryDependencies += "nu.pattern" % "opencv" % "2.4.9-7"
+    unmanagedBase in Compile := file("libs_opencv")
   )
 }

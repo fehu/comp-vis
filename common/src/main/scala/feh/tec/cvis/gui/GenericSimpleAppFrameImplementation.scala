@@ -7,7 +7,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import feh.tec.cvis.common.MatCreation
 import feh.tec.cvis.gui.Helper._
-import org.opencv.core.Mat
+import org.opencv.core.{CvType, Mat}
 import scala.reflect.ClassTag
 import scala.swing._
 import feh.util._
@@ -167,7 +167,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     private var currentModifiedImage = currentRunner.mkImage()
 
 
-    def applyAppropriateConfig() = ???
+    def applyAppropriateConfig() = synchronized{ currentRunner.applyConfig() }
+//      val (run, img) = synchronized{ currentRunner -> currentModifiedImage }
+//      run.exec()
 
 
     protected lazy val runners = mutable.Map.empty[ImageType, Runner[_]]
@@ -241,10 +243,12 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     trait ToMat[T]{
       def convert(iHolder: ImageHolder[T]): Mat
 
-      protected def convertHelper(iHolder: ImageHolder[T], putData: Array[T] => Mat => Unit) =
-        new Mat(iHolder.height, iHolder.width, iHolder.tpe) $${
+      protected def convertHelper(iHolder: ImageHolder[T], putData: Array[T] => Mat => Unit) ={
+        println("iHolder.tpe = " + iHolder.tpe)
+        new Mat(iHolder.height, iHolder.width, /*iHolder.tpe*/ CvType.CV_32SC4) $${
           mat => putData(iHolder.data)(mat)
         }
+      }
     }
 
     def toImageHolder [T](mat: Mat)               (implicit c: ToImageHolder[T]): ImageHolder[T]  = c.convert(mat)

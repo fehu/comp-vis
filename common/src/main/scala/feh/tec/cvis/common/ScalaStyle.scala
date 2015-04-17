@@ -5,7 +5,7 @@ import java.io.File
 
 import org.opencv.core.{MatOfInt, MatOfKeyPoint, Mat}
 import org.opencv.features2d.FeatureDetector
-import org.opencv.highgui.Highgui
+//import org.opencv.highgui.Highgui
 import org.opencv.imgproc.Imgproc
 import feh.util._
 import scala.collection.convert.decorateAll._
@@ -15,17 +15,17 @@ import scala.collection.convert.decorateAll._
  *                Image IO
  */
 
-trait ImageIO{
-  type WriteParams = Map[Int, Int] // instead of MatOfInt
-
-  def imRead(file: String, flags: ImRead.LoadColorType = ImRead.Color): Mat = Highgui.imread(file, flags.value)
-//  def imread(file: Path): Mat = imread(file.mkString(File.separator))
-
-  def imWrite(filename: String, img: Mat, params: WriteParams = Map()) = {
-    val p = params.map{ case (k, v) => k :: v :: Nil }.flatten.toSeq
-    if(p.nonEmpty) Highgui.imwrite(filename, img,  new MatOfInt(p: _*))
-  }
-}
+//trait ImageIO{
+//  type WriteParams = Map[Int, Int] // instead of MatOfInt
+//
+//  def imRead(file: String, flags: ImRead.LoadColorType = ImRead.Color): Mat = Highgui.imread(file, flags.value)
+////  def imread(file: Path): Mat = imread(file.mkString(File.separator))
+//
+//  def imWrite(filename: String, img: Mat, params: WriteParams = Map()) = {
+//    val p = params.map{ case (k, v) => k :: v :: Nil }.flatten.toSeq
+//    if(p.nonEmpty) Highgui.imwrite(filename, img,  new MatOfInt(p: _*))
+//  }
+//}
 
 /*
  *                Creating Mat
