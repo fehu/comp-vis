@@ -2,8 +2,8 @@ package feh.tec.cvis.common.describe
 
 import scala.reflect.ClassTag
 
-case class ArgDescriptor[T: ClassTag](modifiers: ArgModifier[T]*){
-  def &:(mod: ArgModifier[T]) = ArgDescriptor(mod +: modifiers: _*)
+case class ArgDescriptor[T: ClassTag](name: String, description: String, modifiers: ArgModifier[T]*){
+  def &:(mod: ArgModifier[T]) = ArgDescriptor(name, description, mod +: modifiers: _*)
 }
 
 trait ArgModifier[T]{

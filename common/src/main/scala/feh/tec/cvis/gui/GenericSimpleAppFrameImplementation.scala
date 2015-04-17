@@ -1,6 +1,6 @@
 package feh.tec.cvis.gui
 
-import java.awt.Dimension
+import java.awt.{Color, Dimension}
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -105,64 +105,43 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     mkSimpleFrame(img, frameTitle, defaultSize, regNewFrame, unregAFrame)
   }
 
-  def mkSimpleFrame(params: MkSimpleFrameParams): SimpleFrame = params.image match {
-    case Left(img)   => mkSimpleFrame(img,  params.frameTitle, params.defaultSize, params.regNewFrame, params.unregAFrame)
-    case Right(file) => mkSimpleFrame(file, params.frameTitle, params.defaultSize, params.regNewFrame, params.unregAFrame)
-  }
-
-
-  case class MkSimpleFrameParams(image: Either[BufferedImage, File],
-                                 frameTitle: String,
-                                 defaultSize: Dimension,
-                                 regNewFrame: SimpleFrame => Unit,
-                                 unregAFrame: SimpleFrame => Unit)
-
-
-  //  object SimpleFrame{
-//    def apply[C <: GenericConfigurationPanel](
-//              image: BufferedImage,
-//              frameTitle: String,
-//              defaultSize: Dimension,
-//              regNewFrame: SimpleFrame => Unit,
-//              unregAFrame: SimpleFrame => Unit,
-//              mkConf: => C): SimpleFrame{ type Config = C } =
-//      new SimpleFrame(image, frameTitle, defaultSize, regNewFrame, unregAFrame){
-//        type Config = C
-//        def mkConfig = mkConf
-//      }
-//
-//    def apply[C <: SimpleFrame#Config](
-//              file: File,
-//              frameTitle: String,
-//              defaultSize: Dimension,
-//              regNewFrame: SimpleFrame => Unit,
-//              unregAFrame: SimpleFrame => Unit,
-//              mkConf: => C): SimpleFrame =
-//    {
-//      val img = file.withInputStream(ImageIO.read).get
-//      new SimpleFrame(img, frameTitle, defaultSize, regNewFrame, unregAFrame){
-//        type Config = C
-//        def mkConfig = mkConf
-//      }
-//    }
+//  def mkSimpleFrame(params: MkSimpleFrameParams): SimpleFrame = params.image match {
+//    case Left(img)   => mkSimpleFrame(img,  params.frameTitle, params.defaultSize, params.regNewFrame, params.unregAFrame)
+//    case Right(file) => mkSimpleFrame(file, params.frameTitle, params.defaultSize, params.regNewFrame, params.unregAFrame)
 //  }
+//
+//
+//  case class MkSimpleFrameParams(image: Either[BufferedImage, File],
+//                                 frameTitle: String,
+//                                 defaultSize: Dimension,
+//                                 regNewFrame: SimpleFrame => Unit,
+//                                 unregAFrame: SimpleFrame => Unit)
+
 
   trait ConfigurationsPanelBuilder{
     frame: GenericSimpleAppFrame =>
 
-    trait SimpleVerticalPanel extends GenericConfigurationPanel{
-      val elems: Map[String, DSLFormBuilder[_]#FormBuildMeta]
-      def updateForms(): Unit = elems.foreach(_._2.form.updateForm())
+    trait SimpleVerticalPanel extends GridBagPanel with GenericConfigurationPanel{
+      val elems: Map[String, Seq[Component with UpdateInterface]]
+      def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
 
-      _contents += panel.box(_.Vertical)(elems.mapValues(_.component).toSeq.map(_.swap): _*)
+      protected lazy val thePanel = panel.grid(elems.size, 1)(prepareElems: _*)
+//        .box(_.Vertical)(prepareElems: _*)
+//        .doNotGlue
+
+      layout += thePanel.component -> (new Constraints()  $$ { _.fill = GridBagPanel.Fill.Horizontal }
+                                                          $$ { _.weightx = 1 }
+                                                          $$ { _.weighty = 1 }
+                                                          $$ { _.anchor = GridBagPanel.Anchor.NorthEast }
+                                                          )
+
+      private def prepareElems = elems.map{ case (k, v) => mkSmallPanel(k)(v) -> k }.toSeq
+
+      private def mkSmallPanel(id: String)(seq: Seq[Component with UpdateInterface]) =
+        panel.grid(seq.length, 1)(seq.zip(Range(0, seq.length)).map(p => p._1 -> (id + "-" + p._2)): _*)
+          .affect(_.border = Swing.LineBorder(Color.red))
+
     }
 
-//    def simpleVertical(elems: Map[String, DSLFormBuilder[_]]): GenericConfigurationPanel = new GenericConfigurationPanel{
-//      def updateForms(): Unit = ???
-//
-//      def updateImage: (Array[Array[Byte]]) => Unit = ???
-//
-//      _contents += panel.box(_.Vertical)(elems.mapValues(_.formMeta.form).toSeq.map(_.swap): _*)
-//    }
   }
 }

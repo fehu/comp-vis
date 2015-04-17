@@ -11,14 +11,14 @@ import feh.tec.cvis.common.describe.ArgModifier._
 object Harris {
 
   /** Neighborhood size. */
-  object BlockSize  extends ArgDescriptor[Int](ArgModifier.Integer, Positive)
+  object BlockSize  extends ArgDescriptor[Int]("Block size", "neighborhood size", ArgModifier.Integer, Positive)
 
   /** Aperture parameter for the "Sobel" operator. */
-  object KSize      extends ArgDescriptor[Int](ArgModifier.Integer, Positive)
+  object KSize      extends ArgDescriptor[Int]("k size", "aperture parameter for the \"Sobel\" operator", ArgModifier.Integer, Positive)
 
   /** Harris detector free parameter.*/
-  object K          extends ArgDescriptor[Double] //(MaxCap(1), MinCap(-1))
+  object K          extends ArgDescriptor[Double]("k", "Harris detector free parameter") //(MaxCap(1), MinCap(-1))
 
   /** Pixel extrapolation method. */
-  object BorderType extends ArgDescriptor[BorderExtrapolationMethod]
+  object BorderType extends ArgDescriptor[BorderExtrapolationMethod]("Border type", "pixel extrapolation method")
 }
