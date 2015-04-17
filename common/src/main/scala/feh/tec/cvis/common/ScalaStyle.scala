@@ -56,19 +56,21 @@ object ImRead{
  *                Border Extrapolation
  */
 
-sealed abstract class BorderExtrapolationMethod(val value: Int)
+sealed abstract class BorderExtrapolationMethod(val value: Int, val asString: String)
 
 // from nu.pattern/opencv/srcs/opencv-2.4.9-7-sources.jar!/org/opencv/imgproc/Imgproc.java
 object BorderExtrapolationMethod {
-  case object Constant    extends BorderExtrapolationMethod(0)
-  case object Replicate   extends BorderExtrapolationMethod(1)
-  case object Reflect     extends BorderExtrapolationMethod(2)
-  case object Wrap        extends BorderExtrapolationMethod(3)
-  case object Reflect_101 extends BorderExtrapolationMethod(4)
-  case object Transparent extends BorderExtrapolationMethod(5)
-  case object Isolated    extends BorderExtrapolationMethod(16)
+  case object Constant    extends BorderExtrapolationMethod(0,  "Constant")
+  case object Replicate   extends BorderExtrapolationMethod(1,  "Replicate")
+  case object Reflect     extends BorderExtrapolationMethod(2,  "Reflect")
+  case object Wrap        extends BorderExtrapolationMethod(3,  "Wrap")
+  case object Reflect_101 extends BorderExtrapolationMethod(4,  "Reflect 101")
+  case object Transparent extends BorderExtrapolationMethod(5,  "Transparent")
+  case object Isolated    extends BorderExtrapolationMethod(16, "Isolated")
   
   def Default = Reflect_101
+
+  def all = List(Constant, Replicate, Reflect, Wrap, Reflect_101, Transparent, Isolated)
 }
 
 
@@ -79,6 +81,28 @@ object BorderExtrapolationMethod {
 object CornerDetection extends CornerDetection
 
 trait CornerDetection{
+  /**
+   * <p>Harris edge detector.</p>
+   *
+   * <p>The function runs the Harris edge detector on the image. Similarly to
+   * "cornerMinEigenVal" and "cornerEigenValsAndVecs", for each pixel <em>(x,
+   * y)</em> it calculates a <em>2x2</em> gradient covariance matrix
+   * <em>M^((x,y))</em> over a <em>blockSize x blockSize</em> neighborhood. Then,
+   * it computes the following characteristic:</p>
+   *
+   * <p><em>dst(x,y) = det M^((x,y)) - k * (tr M^((x,y)))^2</em></p>
+   *
+   * <p>Corners in the image can be found as the local maxima of this response map.</p>
+   *
+   * @param src Input single-channel 8-bit or floating-point image.
+   * @param blockSize Neighborhood size (see the details on "cornerEigenValsAndVecs").
+   * @param ksize Aperture parameter for the "Sobel" operator.
+   * @param k Harris detector free parameter. See the formula below.
+   * @param borderType Pixel extrapolation method. See "borderInterpolate".
+   * @return the Harris detector responses
+   *
+   * @see <a href="http://docs.opencv.org/modules/imgproc/doc/feature_detection.html#cornerharris">org.opencv.imgproc.Imgproc.cornerHarris</a>
+   */
   def cornerHarris(src: Mat, blockSize: Int, ksize: Int, k: Double, borderType: Option[Int] = None): Mat = {
     val dist = src.clone()
     borderType map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
