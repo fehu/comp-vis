@@ -17,7 +17,7 @@ import feh.util.file._
 
 import scala.swing.event.{Key, MouseClicked}
 
-//import feh.tec.cvis.gui.FileDropped._
+import feh.tec.cvis.gui.FileDropped._
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -26,7 +26,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def newFrame(file: File)
 
-//    frame.peer.getRootPane onFilesDropped filesAdded
+    frame.peer.getRootPane onFilesDropped filesAdded
 
     protected def filesAdded(files: List[File]): Unit = files foreach newFrame
   }

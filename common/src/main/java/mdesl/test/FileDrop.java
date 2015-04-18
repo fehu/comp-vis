@@ -1,6 +1,8 @@
 // from https://github.com/mattdesl/lwjgl-basics/blob/master/test/mdesl/test/FileDrop.java
 //      master - cdf5c33c5365848e7e052036e1ff549dfc6c109f
 
+// seems to fail with Java 8
+
 package mdesl.test;
 
 import java.awt.datatransfer.DataFlavor;
