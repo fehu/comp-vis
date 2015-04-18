@@ -36,7 +36,7 @@ trait GenericSimpleApp extends App with AbstractGUI with GenericConfigurationGUI
     val configurations: Config
     
 
-    protected def filesDropped(files: List[File])
+    protected def filesAdded(files: List[File])
 
     protected def defaultSize: Dimension
   }
@@ -48,8 +48,7 @@ object GenericSimpleApp{
   abstract class DefaultApp( val appTitle: String,
                     emptySize: Dimension,
                     defaultSize: Dimension,
-//                    configurationsElem: DefaultApp => DefaultApp#LayoutElem,
-                    emptyText: String = "Drop some files here") extends GenericSimpleAppFrameImplementation{
+                    emptyText: String = "Click or Drop some files here") extends GenericSimpleAppFrameImplementation{
     type AppFrame = SimpleFrame
     var frames: Set[AppFrame] = Set()
 

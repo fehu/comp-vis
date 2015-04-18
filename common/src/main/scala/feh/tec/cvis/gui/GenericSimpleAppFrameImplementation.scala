@@ -1,5 +1,7 @@
 package feh.tec.cvis.gui
 
+import javax.swing.filechooser.{FileNameExtensionFilter, FileFilter}
+
 import scala.collection.mutable
 import java.awt.{Color, Dimension}
 import java.awt.image.{DataBuffer, DataBufferInt, DataBufferByte, BufferedImage}
@@ -12,7 +14,10 @@ import scala.reflect.ClassTag
 import scala.swing._
 import feh.util._
 import feh.util.file._
-import feh.tec.cvis.gui.FileDropped._
+
+import scala.swing.event.{Key, MouseClicked}
+
+//import feh.tec.cvis.gui.FileDropped._
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -21,9 +26,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def newFrame(file: File)
 
-    frame.peer.getRootPane onFilesDropped filesDropped
+//    frame.peer.getRootPane onFilesDropped filesAdded
 
-    protected def filesDropped(files: List[File]): Unit = files foreach newFrame
+    protected def filesAdded(files: List[File]): Unit = files foreach newFrame
   }
 
   class EmptyFrame(emptyText: String,
@@ -36,8 +41,10 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                     )
     extends Frame with NewFrameOnFileDrop
   {
+    frame =>
+
     title = frameTitle
-    contents = new Label(emptyText)
+    contents = label
 
     minimumSize   = emptySize
     preferredSize = emptySize
@@ -51,6 +58,28 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     override def closeOperation(): Unit = {
       onEmptyClose
       super.closeOperation()
+    }
+
+    lazy val label = new Label(emptyText)
+
+    listenTo(label.mouse.clicks)
+    reactions += {
+      case ev: MouseClicked /*(_, _, _ /*??*/, _, _)*/ =>
+        println("AA")
+        new FileChooser(new File(sys.props("user.home"))) $$ {
+        fch =>
+          fch.fileFilter = new FileNameExtensionFilter("images", "jpg", "jpeg", "png", "gif")
+          fch.multiSelectionEnabled = true
+          fch.title = "Select files"
+          fch.showDialog(frame, "Select") match {
+            case FileChooser.Result.Approve => filesAdded _ $ fch.selectedFiles.toList
+            case FileChooser.Result.Cancel  => // do nothing
+            case FileChooser.Result.Error   => Dialog.showMessage(parent = frame,
+                                                                  message = "Failed to select the file",
+                                                                  title = "Error",
+                                                                  Dialog.Message.Error)
+          }
+      }
     }
   }
 

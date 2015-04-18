@@ -2,21 +2,16 @@ package feh.tec.cvis.testapp
 
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-
 import feh.tec.cvis.common.describe.ArgModifier.{MaxCap, MinCap}
 import feh.tec.cvis.common.describe.Harris
 import feh.tec.cvis.common.{CornerDetection, MatCreation}
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.Harris
 import org.opencv.core.{Core, Mat}
-
-import scala.reflect.ClassTag
 import scala.swing.Component
 import scala.swing.Swing._
 
 object TestHarris extends DefaultApp("test", 300 -> 300, 600 -> 800) with Harris{
-
-  System.setProperty("java.library.path", "libs_opencv/linux-x64")
 
   System.loadLibrary(Core.NATIVE_LIBRARY_NAME)
 
