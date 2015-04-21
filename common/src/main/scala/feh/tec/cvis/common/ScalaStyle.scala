@@ -3,17 +3,19 @@ package feh.tec.cvis.common
 import java.awt.image.{DataBufferByte, BufferedImage}
 import java.io.File
 
-import org.opencv.core.{MatOfInt, MatOfKeyPoint, Mat}
+import org.opencv.core.{CvType, MatOfInt, MatOfKeyPoint, Mat}
 import org.opencv.features2d.FeatureDetector
-//import org.opencv.highgui.Highgui
+
 import org.opencv.imgproc.Imgproc
 import feh.util._
 import scala.collection.convert.decorateAll._
+import scala.reflect.ClassTag
 
 
 /*
  *                Image IO
  */
+//import org.opencv.highgui.Highgui
 
 //trait ImageIO{
 //  type WriteParams = Map[Int, Int] // instead of MatOfInt
@@ -57,15 +59,15 @@ trait MatCreation{
 }
 
 // from nu.pattern/opencv/srcs/opencv-2.4.9-7-sources.jar!/org/opencv/highgui/Highgui.java
-object ImRead{
-  abstract class LoadColorType(val value: Int)
-  
-  case object Unchanged extends LoadColorType(-1)
-  case object Grayscale extends LoadColorType(0)
-  case object Color     extends LoadColorType(1)
-  case object AnyDepth  extends LoadColorType(2)
-  case object AnyColor  extends LoadColorType(4)
-}
+//object ImRead{
+//  abstract class LoadColorType(val value: Int)
+//
+//  case object Unchanged extends LoadColorType(-1)
+//  case object Grayscale extends LoadColorType(0)
+//  case object Color     extends LoadColorType(1)
+//  case object AnyDepth  extends LoadColorType(2)
+//  case object AnyColor  extends LoadColorType(4)
+//}
 
 /*
  *                Border Extrapolation
@@ -87,6 +89,86 @@ object BorderExtrapolationMethod {
 
   def all = List(Constant, Replicate, Reflect, Wrap, Reflect_101, Transparent, Isolated)
 }
+
+/*
+ *                Colors
+ */
+
+abstract class ColorMode
+
+/** OpenCV color modes */
+object ColorMode{
+  case object RGB   extends ColorMode
+  case object BGR   extends ColorMode
+  case object BGRA  extends ColorMode
+  case object RGBA  extends ColorMode
+  case object Gray  extends ColorMode
+  // and much more
+}
+
+case class ColorConversion(from: ColorMode, to: ColorMode)
+
+object ColorConversion{
+  import ColorMode._
+
+  def code(from: ColorMode, to: ColorMode): Option[Int] = conversionCodes.get(from).flatMap(_.get(to))
+  def code(c: ColorConversion): Option[Int] = code(c.from, c.to)
+
+  lazy val conversionCodes: Map[ColorMode, Map[ColorMode, Int]] = Map(
+    RGB   -> Map( BGR  -> Imgproc.COLOR_RGB2BGR
+                , BGRA -> Imgproc.COLOR_RGB2BGRA
+                , RGBA -> Imgproc.COLOR_RGB2RGBA
+                , Gray -> Imgproc.COLOR_RGB2GRAY
+                  ),
+
+    BGR   -> Map( RGB  -> Imgproc.COLOR_BGR2RGB
+                , RGBA -> Imgproc.COLOR_BGR2RGBA
+                , BGRA -> Imgproc.COLOR_BGR2BGRA
+                , Gray -> Imgproc.COLOR_BGR2GRAY
+                  ),
+
+    BGRA  -> Map( RGB  -> Imgproc.COLOR_BGRA2RGB
+                , RGBA -> Imgproc.COLOR_BGRA2RGBA
+                , BGR  -> Imgproc.COLOR_BGRA2BGR
+                , Gray -> Imgproc.COLOR_BGRA2GRAY
+                ),
+
+    RGBA  -> Map( BGR  -> Imgproc.COLOR_RGBA2BGR
+                , BGRA -> Imgproc.COLOR_RGBA2BGRA
+                , RGB  -> Imgproc.COLOR_RGBA2RGB
+                , Gray -> Imgproc.COLOR_RGBA2GRAY
+                  ),
+
+    Gray  -> Map( BGR  -> Imgproc.COLOR_GRAY2BGR
+                , BGRA -> Imgproc.COLOR_GRAY2BGRA
+                , RGB  -> Imgproc.COLOR_GRAY2RGB
+                , RGBA -> Imgproc.COLOR_GRAY2RGBA
+                  )
+  )
+}
+
+object BufferedImageColor{
+
+  def mode(img: BufferedImage): ColorMode = img.getType match {
+    case BufferedImage.TYPE_3BYTE_BGR | BufferedImage.TYPE_INT_BGR  => ColorMode.BGR
+    case BufferedImage.TYPE_4BYTE_ABGR                              => ColorMode.BGRA
+    case BufferedImage.TYPE_INT_RGB                                 => ColorMode.RGB
+    case BufferedImage.TYPE_INT_ARGB                                => ColorMode.RGBA
+  }
+
+}
+
+//object MatColorMode {
+//  import ColorMode._
+//
+//  def code[T: ClassTag](colorMode: ColorMode): Int = ???
+//
+//  lazy val homograficMapping: Map[ColorMode, Int] = Map(
+//    RGB   -> CvType.CV2
+//
+//  )
+//  lazy val reprDependantMapping: Map[(ColorMode, ClassTag[_]), Int] = ???
+//}
 
 
 /*
