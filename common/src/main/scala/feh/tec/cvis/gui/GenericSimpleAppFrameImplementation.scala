@@ -14,10 +14,8 @@ import scala.reflect.ClassTag
 import scala.swing._
 import feh.util._
 import feh.util.file._
-
+import FileDrop._
 import scala.swing.event.{Key, MouseClicked}
-
-import feh.tec.cvis.gui.FileDropped._
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -26,7 +24,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def newFrame(file: File)
 
-    frame.peer.getRootPane onFilesDropped filesAdded
+    frame.peer.getRootPane onFilesDropped (borderOnDrag, filesAdded)
+
+    protected lazy val borderOnDrag = Swing.MatteBorder(10, 10, 10, 10, Color.blue)
 
     protected def filesAdded(files: List[File]): Unit = files foreach newFrame
   }
@@ -158,7 +158,16 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                                                 var tpe: Int,
                                                 var data: Array[N]
                                                  )
-    protected case class ImageHolder[T] (width: Int, height: Int, tpe: Int, data: Array[T])
+    protected case class ImageHolder[T] (width: Int, height: Int, jImageType: Int, data: Array[T])
+
+    object JImageTypeConversions{
+      def toCV(jType: Int): Int = jType match {
+        case BufferedImage.TYPE_3BYTE_BGR => CvType.CV_8UC3
+      }
+      def toJ(cvType: Int): Int = cvType match {
+        case CvType.CV_8UC3 => BufferedImage.TYPE_3BYTE_BGR
+      }
+    }
 
     trait Runner[N]{
       private val modifiedBuffer = new ModifiedBuffer[N]( image.getWidth,
@@ -177,7 +186,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
           (buf: ModifiedBuffer[N]) =>
             buf.width = res.width
             buf.height = res.height
-            buf.tpe = res.tpe
+            buf.tpe = res.jImageType
             buf.data = res.data
         }
         currentModifiedImage = mkImage(snapshot)
@@ -263,7 +272,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def convert(mat: Mat): ImageHolder[T]
 
       protected def convertHelper(mat: Mat, getData: Array[T] => Mat => Unit) = {
-        val data = Array.ofDim[T](mat.width * mat.height * mat.depth)
+        val data = Array.ofDim[T](mat.width * mat.height * mat.channels())
         getData(data)(mat)
         ImageHolder(mat.width, mat.height, mat.`type`(), data)
       }
@@ -273,8 +282,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def convert(iHolder: ImageHolder[T]): Mat
 
       protected def convertHelper(iHolder: ImageHolder[T], putData: Array[T] => Mat => Unit) ={
-        println("iHolder.tpe = " + iHolder.tpe)
-        new Mat(iHolder.height, iHolder.width, /*iHolder.tpe*/ CvType.CV_32SC4) $${
+        println("iHolder.tpe = " + iHolder.jImageType)
+        new Mat(iHolder.height, iHolder.width, JImageTypeConversions.toCV(iHolder.jImageType)) $$ {
           mat => putData(iHolder.data)(mat)
         }
       }
@@ -295,10 +304,10 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     protected abstract class RunnerImpl[T: ToMat: ToImageHolder](val func: Mat => Mat) extends Runner[T]
     {
       def fillImg(snapshot: ImageHolder[T], fill: BufferedImage => Unit) =
-        new BufferedImage(snapshot.width, snapshot.height, snapshot.tpe) $$ fill
+        new BufferedImage(snapshot.width, snapshot.height, snapshot.jImageType) $$ fill
 
       def mkImage(snapshot: ImageHolder[T]): BufferedImage =
-        new BufferedImage(snapshot.width, snapshot.height, snapshot.tpe) $$ {
+        new BufferedImage(snapshot.width, snapshot.height, snapshot.jImageType) $$ {
           img =>
             System.arraycopy(snapshot.data, 0, getData(img.getRaster.getDataBuffer), 0, snapshot.data.length)
         }
