@@ -106,6 +106,24 @@ object ColorMode{
   // and much more
 }
 
+/** Converts an image from one color space to another.
+  * C++: void cvtColor(InputArray src, OutputArray dst, int code, int dstCn=0 )
+  *
+  * Parameters:
+  *   src – input image: 8-bit unsigned, 16-bit unsigned ( CV_16UC... ), or single-precision floating-point.
+  *   dst – output image of the same size and depth as src.
+  *   code – color space conversion code (see the description below).
+  *   dstCn – number of channels in the destination image; if the parameter is 0, the number of the channels is derived automatically from src and code .
+  *
+  * @see http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html#cvtcolor
+  */
+trait ColorConverting {
+  def cvtColor(src: Mat, conv: ColorConversion, dstCnOpt: Option[Int]): Mat = {
+    val convCode = ColorConversion.code(conv) getOrThrow s"no conversion code for $conv"
+    new Mat() $$ (Imgproc.cvtColor(src, _, convCode, dstCnOpt getOrElse 0))
+  }
+}
+
 case class ColorConversion(from: ColorMode, to: ColorMode)
 
 object ColorConversion{

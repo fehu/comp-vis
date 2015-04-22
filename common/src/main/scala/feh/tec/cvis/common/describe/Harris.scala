@@ -6,7 +6,7 @@ import org.opencv.core.Mat
 
 /** Harris edge detector arguments descriptions
  *
- *  @see [[feh.tec.cvis.common.CornerDetection.cornerHarris]]
+ *  @see [[feh.tec.cvis.common.CornerDetection.cornerHarris]] (in common/src/main/scala/feh/tec/cvis/common/ScalaStyle.scala)
  */
 
 object Harris {
