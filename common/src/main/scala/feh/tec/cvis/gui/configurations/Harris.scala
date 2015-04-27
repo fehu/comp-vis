@@ -6,22 +6,25 @@ import feh.dsl.swing.AbstractGUI
 import feh.tec.cvis.common.describe.ArgModifier.{MinCap, MaxCap}
 import feh.tec.cvis.common.{describe, BorderExtrapolationMethod, CornerDetection}
 import feh.tec.cvis.common.describe.{Harris, ArgModifier, ArgDescriptor}
-import feh.tec.cvis.gui.GenericConfigurationGUI
+import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
 import feh.util._
+import org.opencv.core.Mat
 
 import scala.collection.immutable.NumericRange
 import scala.reflect.ClassTag
 import scala.swing.{Swing, Alignment}
 
 trait Harris extends GenericConfigurationGUI with CornerDetection{
-  gui: AbstractGUI =>
+  gui: AbstractGUI with GenericSimpleAppFrameImplementation =>
 
   trait HarrisGUI extends super.GenericGUIFrame{
-    frame: GuiFrame =>
+    frame: GuiFrame with FrameExec=>
 
-    trait HarrisConfigurationPanelElements { //
-      self: GenericConfigurationPanel =>
+    trait HarrisConfigurationPanelExec extends MatPanelExec{ //
+      conf: GenericConfigurationPanel =>
 
+      final type Params = Harris.Params
+      
       def formBuilders: Map[String, (DSLFormBuilder[_], DSLLabelBuilder[_])] = Map(
         "block-size"  -> blockSizeBuilder,
         "k-size"      -> kSizeBuilder,
@@ -39,6 +42,14 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
       final def kSize = _kSize
       final def k = _k
       final def borderType = _borderType
+
+
+
+      protected def getParams(): Params = (blockSize, kSize, k, Option(borderType)) 
+
+      lazy val runner: Runner[Params, Mat, Mat] = Runner.create(Harris.Descriptor.call(gui))
+
+
 
       def kBounds: Option[(MinCap[Double], MaxCap[Double])]
       protected def kArgs = kBounds.map(p => p._1 &: p._2 &: Harris.K) getOrElse Harris.K

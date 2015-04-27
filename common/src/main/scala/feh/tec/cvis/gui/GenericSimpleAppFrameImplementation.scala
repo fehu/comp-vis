@@ -83,7 +83,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
   }
 
-  abstract class SimpleFrame( val image: BufferedImage,
+  abstract class SimpleFrame( val originalImage: BufferedImage,
                                   frameTitle: String,
                     protected val defaultSize: Dimension,
                     protected val regNewFrame: SimpleFrame => Unit,
@@ -96,7 +96,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
   {
     type Preview = SimplePreview
 
-    val original: Preview = new SimplePreview{ def img = image }
+    val original: Preview = new SimplePreview{ def img = originalImage }
     val modified: Preview = new SimplePreview{ def img = modifiedImage }
 
     this.title = frameTitle
@@ -114,11 +114,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     val layout: List[AbstractLayoutSetting] = split(_.Vertical)(
       panel.grid(2, 1)(original -> "image-original", modified -> "image-modified") -> "left-panel",
-      panel.gridBag(
-        place(configurations $$ {_.minimumSize = 200 -> 200}, "configurations") at theCenter,
-        place(applyButton, "apply") at theSouth
-      ) -> "right-panel"
-//      (configurations $$ {_.minimumSize = 200 -> 200}) -> "configurations"
+      (configurations $$ {_.minimumSize = 200 -> 200}) -> "configurations"
     )
   }
 
@@ -149,215 +145,86 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 //                                 regNewFrame: SimpleFrame => Unit,
 //                                 unregAFrame: SimpleFrame => Unit)
 
-
   trait FrameExec{
-    self: GenericSimpleAppFrame =>
-
-    class ModifiedBuffer[N] private[FrameExec]( var width: Int,
-                                                var height: Int,
-                                                var tpe: Int,
-                                                var data: Array[N]
-                                                 )
-    protected case class ImageHolder[T] (width: Int, height: Int, jImageType: Int, data: Array[T])
-
-    object JImageTypeConversions{
-      def toCV(jType: Int): Int = jType match {
-        case BufferedImage.TYPE_3BYTE_BGR => CvType.CV_8UC3
-      }
-      def toJ(cvType: Int): Int = cvType match {
-        case CvType.CV_8UC3 => BufferedImage.TYPE_3BYTE_BGR
-      }
-    }
-
-    trait Runner[N]{
-      private val modifiedBuffer = new ModifiedBuffer[N]( image.getWidth,
-                                                          image.getHeight,
-                                                          image.getType,
-                                                          getData(image.getData.getDataBuffer))
-
-      protected def getData(buff: DataBuffer): Array[N]
-
-      def exec(): ImageHolder[N]
-
-      def applyConfig() = {
-        val res = exec()
-
-        accessBuffer{
-          (buf: ModifiedBuffer[N]) =>
-            buf.width = res.width
-            buf.height = res.height
-            buf.tpe = res.jImageType
-            buf.data = res.data
-        }
-        currentModifiedImage = mkImage(snapshot)
-
-        modified.repaint()
-      }
-
-      final def accessBuffer[R](f: ModifiedBuffer[N] => R): R = synchronized{ f(modifiedBuffer) }
-
-      def snapshot = accessBuffer((b: ModifiedBuffer[N]) => ImageHolder[N](b.width, b.height, b.tpe, b.data))
-
-      def mkImage(snapshot: ImageHolder[N] = snapshot): BufferedImage
-    }
-
-    protected var currentRunner: Runner[_] = getRunner(image)
-    private var currentModifiedImage = currentRunner.mkImage()
-
-
-    def applyAppropriateConfig() = synchronized{ currentRunner.applyConfig() }
-//      val (run, img) = synchronized{ currentRunner -> currentModifiedImage }
-//      run.exec()
-
-
-    protected lazy val runners = mutable.Map.empty[ImageType, Runner[_]]
-
-    def getRunner(img: BufferedImage): Runner[_] = imageType(img) |> {
-      tpe =>
-        runners.getOrElse(tpe, {
-          val newRunner = mkRunner(tpe)
-          runners += tpe -> newRunner
-          newRunner
-        })
-    }
-
-    protected def mkRunner: ImageType => Runner[_]
-//    protected def mkRunner = DoCaseType(caseInt = ???,
-//                                        caseByte = ???,
-//                                        caseByteArr = ???,
-//                                        caseShort = ???)
-
-
-
-    def modifiedImage = currentModifiedImage
-
-//    protected def mkImage[N](snapshot: ModifiedBufferSnapshot[N])
-//                            (implicit builder: CanMakeBufferedImage[N]) = builder mk snapshot
-
-//      new BufferedImage(snapshot.width, snapshot.height, snapshot.tpe) |>{
-//      img =>
-//        val from = snapshot.data
-//        val to = img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
-//        System.arraycopy(from, 0, to, 0, from.length)
-//        img
-//    }
-
-    lazy val applyButton = triggerFor(applyAppropriateConfig()).button("Apply")
-
-//    trait CanMakeBufferedImage[From]{
-//      def mk(snapshot: ImageHolder[From]): BufferedImage
-//    }
-
-  }
-
-  @deprecated
-  trait FrameExecMatSupport extends FrameExec {
-    self: GenericSimpleAppFrame with MatCreation=>
-
-    @deprecated
-    trait MatSupport[T] {
-//      implicit def canFillMat: CanFillMat[T]
-//
-//      implicit def canExtractMat: CanExtractMat[T]
-
-      implicit def matToImageHolder: ToImageHolder[T]
-    }
-
-    //    trait RunnerMatSupport[T] extends Runner[T]{
-    //
-    //    }
-
-    abstract class ToImageHolder[T: ClassTag]
-    {
-      def convert(mat: Mat): ImageHolder[T]
-
-      protected def convertHelper(mat: Mat, getData: Array[T] => Mat => Unit) = {
-        val data = Array.ofDim[T](mat.width * mat.height * mat.channels())
-        getData(data)(mat)
-        ImageHolder(mat.width, mat.height, mat.`type`(), data)
-      }
-    }
-
-    trait ToMat[T]{
-      def convert(iHolder: ImageHolder[T]): Mat
-
-      protected def convertHelper(iHolder: ImageHolder[T], putData: Array[T] => Mat => Unit) ={
-        println("iHolder.tpe = " + iHolder.jImageType)
-        new Mat(iHolder.height, iHolder.width, JImageTypeConversions.toCV(iHolder.jImageType)) $$ {
-          mat => putData(iHolder.data)(mat)
-        }
-      }
-    }
-
-    def toImageHolder [T](mat: Mat)               (implicit c: ToImageHolder[T]): ImageHolder[T]  = c.convert(mat)
-    def toMat         [T](iHolder: ImageHolder[T])(implicit c: ToMat[T])        : Mat             = c.convert(iHolder)
-  }
-
-  trait FrameExecRunners extends FrameExec {
-    self: GenericSimpleAppFrame with FrameExecMatSupport with MatCreation =>
-
-    def runnerFor(func: Mat => Mat)(tpe: ImageType): Runner[_] = tpe match {
-      case ImageType.Int  => new IntRunner(func)
-      case ImageType.Byte => new ByteRunner(func)
-    }
-
-    protected abstract class RunnerImpl[T: ToMat: ToImageHolder](val func: Mat => Mat) extends Runner[T]
-    {
-      def fillImg(snapshot: ImageHolder[T], fill: BufferedImage => Unit) =
-        new BufferedImage(snapshot.width, snapshot.height, snapshot.jImageType) $$ fill
-
-      def mkImage(snapshot: ImageHolder[T]): BufferedImage =
-        new BufferedImage(snapshot.width, snapshot.height, snapshot.jImageType) $$ {
-          img =>
-            System.arraycopy(snapshot.data, 0, getData(img.getRaster.getDataBuffer), 0, snapshot.data.length)
-        }
-
-      def exec() = toImageHolder(func( toMat(snapshot) ))
-    }
-
-    class IntRunner(func: Mat => Mat) extends RunnerImpl[Int](func)
-    {
-      protected def getData(buff: DataBuffer): Array[Int] = buff.asInstanceOf[DataBufferInt].getData
-    }
-
-    implicit def matToIntImageHolder: ToImageHolder[Int] = new ToImageHolder[Int] {
-      def convert(mat: Mat): ImageHolder[Int] = convertHelper(mat, data => _.get(0, 0, data))
-    }
-    //      {
-    //        val data = Array.ofDim[Int](mat.width * mat.height * mat.depth)
-    //        mat.get(0, 0, data)
-    //        ImageHolder(mat.width, mat.height, mat.`type`(), data)
-    //      }
-
-    implicit def intImageHolderToMat: ToMat[Int] = new ToMat[Int] {
-      def convert(iHolder: ImageHolder[Int]): Mat = convertHelper(iHolder, data => _.put(0, 0, data))
-    }
-
-
-    class ByteRunner(func: Mat => Mat) extends RunnerImpl[Byte](func)
-    {
-      protected def getData(buff: DataBuffer): Array[Byte] = buff.asInstanceOf[DataBufferByte].getData
-    }
-
-    implicit def matToByteImageHolder: ToImageHolder[Byte] = new ToImageHolder[Byte] {
-      def convert(mat: Mat): ImageHolder[Byte] = convertHelper(mat, data => _.get(0, 0, data))
-    }
-
-    implicit def byteImageHolderToMat: ToMat[Byte] = new ToMat[Byte] {
-      def convert(iHolder: ImageHolder[Byte]): Mat = convertHelper(iHolder, data => _.put(0, 0, data))
-    }
-
-  }
-
-
-  trait ConfigurationsPanelBuilder{
     frame: GenericSimpleAppFrame =>
 
+    type Config  <: GenericConfigurationPanel with PanelExec[_, _]
+
+    protected var imageMat = toMat(originalImage)
+
+    def modifiedImage = toBufferImage(imageMat)
+    
+    case class Runner[Params, Src, R](exec: Params => Src => R)
+    object Runner{
+      def create[Params, Src, R](exec: Src => Params => R): Runner[Params, Src, R] = new Runner(params => src => exec(src)(params))
+    }
+
+//    case class RunnerExt[T, R](get: T => Runner[R]){
+//      def runner: T =>  = t => Runner(exec(t))
+//    }
+//    object RunnerExt{
+//      def apply[R](runner: Runner[R]): RunnerExt[T, R]
+//    }
+    
+    case class TransformsFor[Src](get: Seq[Runner[_, Src, _]])
+    
+//    def exec[R](panel: PanelExec[R])
+    
+    // tags todo used ??
+//    def underlyingTag(buffi: BufferedImage): ClassTag[_]
+//    def underlyingTag(mat: Mat): ClassTag[_]
+
+    // Mat support
+    def toMat(img: BufferedImage): Mat
+    def toBufferImage(mat: Mat): BufferedImage
+
+    
+    trait PanelExec[Src, R]{
+      conf: GenericConfigurationPanel =>
+
+      type Params
+
+      def classTag: ClassTag[R]
+      def runner: Runner[Params, Src, R]
+      
+      def exec(): R
+    }
+
+    trait MatPanelExec extends PanelExec[Mat, Mat]{
+      conf: GenericConfigurationPanel =>
+
+
+      def classTag =  scala.reflect.classTag[Mat]
+
+      protected def getParams(): Params
+      
+      def exec(): Mat = runner.exec(getParams())(frame.imageMat)
+    }
+
+
+    def matPanelExec(mp: MatPanelExec) = {
+      val mat = mp.exec()
+      frame.imageMat = mat
+      frame.modified.repaint()
+    }
+  }
+
+  trait ConfigurationsPanelBuilder{
+    frame: GenericSimpleAppFrame with FrameExec =>
+
     trait SimpleVerticalPanel extends GridBagPanel with GenericConfigurationPanel{
+      self: MatPanelExec =>
+
       val elems: Map[String, Seq[Component with UpdateInterface]]
+
+      lazy val applyButton = triggerFor(imageMat = exec()).button("Apply")
+
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
 
-      protected lazy val thePanel = panel.grid(elems.size, 1)(prepareElems: _*)
+      protected lazy val thePanel = panel.grid(2, 1)(
+        panel.grid(elems.size, 1)(prepareElems: _*) -> noId,
+        applyButton -> "apply"
+      )
 //        .box(_.Vertical)(prepareElems: _*)
 //        .doNotGlue
 

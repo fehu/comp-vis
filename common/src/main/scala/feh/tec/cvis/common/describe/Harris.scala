@@ -10,6 +10,7 @@ import org.opencv.core.Mat
  */
 
 object Harris {
+  type Params = (Int, Int, Double, Option[BorderExtrapolationMethod])
 
   /** Neighborhood size. */
   object BlockSize  extends ArgDescriptor[Int]("Block size", "neighborhood size", Integer, Positive)
@@ -23,7 +24,7 @@ object Harris {
   /** Pixel extrapolation method. */
   object BorderType extends ArgDescriptor[BorderExtrapolationMethod]("Border type", "pixel extrapolation method", Optional)
 
-  object Descriptor extends CallDescriptor[CornerDetection, Mat, (Int, Int, Double, Option[BorderExtrapolationMethod]), Mat](
+  object Descriptor extends CallDescriptor[CornerDetection, Mat, Params, Mat](
     scope => mat => {
       case (blockSize, kSize, k, borderType) => scope.cornerHarris(mat, blockSize, kSize, k, borderType)
     }

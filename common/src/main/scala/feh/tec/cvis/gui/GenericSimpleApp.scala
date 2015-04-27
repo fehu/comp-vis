@@ -28,7 +28,7 @@ trait GenericSimpleApp extends App with AbstractGUI with GenericConfigurationGUI
     type Preview <: Component
     type Config  <: GenericConfigurationPanel
 
-    val image: BufferedImage
+    val originalImage: BufferedImage
     def modifiedImage: BufferedImage
     
     val original: Preview
