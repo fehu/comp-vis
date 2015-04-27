@@ -18,7 +18,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
   gui: AbstractGUI with GenericSimpleAppFrameImplementation =>
 
   trait HarrisGUI extends super.GenericGUIFrame{
-    frame: GuiFrame with FrameExec=>
+    frame: GuiFrame with FrameExec =>
 
     trait HarrisConfigurationPanelExec extends MatPanelExec{ //
       conf: GenericConfigurationPanel =>

@@ -10,6 +10,7 @@ import feh.util._
  * @see [[ColorConverting]] (in common/src/main/scala/feh/tec/cvis/common/ScalaStyle.scala)
  */
 object ConvertColor {
+  type Params = (ColorConversion, Option[Int])
 
   object ConvertCode extends ArgDescriptor[ColorConversion]("Code", "color space conversion code")
 

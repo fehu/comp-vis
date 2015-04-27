@@ -217,7 +217,14 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       val elems: Map[String, Seq[Component with UpdateInterface]]
 
-      lazy val applyButton = triggerFor(imageMat = exec()).button("Apply")
+      lazy val applyButton = triggerFor{
+        try imageMat = exec()
+        catch {
+          case thr: Throwable => Dialog.showMessage(message = thr.toString,
+                                                    title = "Error",
+                                                    messageType = Dialog.Message.Error)
+        }
+      }.button("Apply")
 
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
 

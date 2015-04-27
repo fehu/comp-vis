@@ -104,6 +104,8 @@ object ColorMode{
   case object RGBA  extends ColorMode
   case object Gray  extends ColorMode
   // and much more
+
+  def values = Set(RGB, RGBA, BGR, BGRA, Gray)
 }
 
 /** Converts an image from one color space to another.
