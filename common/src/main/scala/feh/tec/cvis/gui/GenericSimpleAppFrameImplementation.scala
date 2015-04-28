@@ -4,7 +4,7 @@ import javax.swing.filechooser.{FileNameExtensionFilter, FileFilter}
 
 import scala.collection.mutable
 import java.awt.{Color, Dimension}
-import java.awt.image.{DataBuffer, DataBufferInt, DataBufferByte, BufferedImage}
+import java.awt.image._
 import java.io.File
 import javax.imageio.ImageIO
 import feh.tec.cvis.common.MatCreation
@@ -209,6 +209,82 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
   }
 
+  trait MatSupport extends FrameExec {
+    frame: GenericSimpleAppFrame =>
+
+    def toMat(img: BufferedImage): Mat = {
+      val buff = img.getRaster.getDataBuffer
+
+      val depth = DataBuffer.getDataTypeSize(buff.getDataType) match {
+        case 8  => CvType.CV_8U
+        case 16 => CvType.CV_16U
+        case 32 => CvType.CV_32F
+      }
+
+      val channels = buff.getSize / (img.getHeight * img.getWidth)
+
+      println(s"toMat: depth=$depth, channels=$channels")
+
+      val mat = new Mat(img.getHeight, img.getWidth, CvType.makeType(depth, channels))
+      buff match {
+        case b: DataBufferByte    => mat.put(0, 0, b.getData)
+        case b: DataBufferShort   => mat.put(0, 0, b.getData)
+        case b: DataBufferUShort  => mat.put(0, 0, b.getData)
+        case b: DataBufferInt     => mat.put(0, 0, b.getData)
+        case b: DataBufferFloat   => mat.put(0, 0, b.getData)
+        case b: DataBufferDouble  => mat.put(0, 0, b.getData: _*)
+      }
+      mat
+    }
+
+    def toBufferImage(mat: Mat): BufferedImage = {
+      val gray  = mat.channels() == 1
+      val norm  = mat.channels() == 3
+      val alpha = mat.channels() == 4
+
+      val setByte  = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferByte].getData)
+      val setShort = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferShort].getData)
+      val setInt   = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
+      val setFloat = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
+
+      // todo ???
+      val (tpe, setData) = mat.depth() match {
+        // Byte
+        case CvType.CV_8U  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
+        case CvType.CV_8U  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
+        case CvType.CV_8U  if alpha => BufferedImage.TYPE_4BYTE_ABGR -> setByte
+        // UShort
+        case CvType.CV_16U if gray  => BufferedImage.TYPE_USHORT_GRAY -> setShort
+        // Int
+        case CvType.CV_32S if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
+        case CvType.CV_32S if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
+        // Float todo ?? treat as int ???
+        case CvType.CV_32F if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
+        case CvType.CV_32F if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
+      }
+
+      /* * 8 match {
+        // Byte
+        case 8  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
+        case 8  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
+        case 8  if alpha => BufferedImage.TYPE_4BYTE_ABGR -> setByte
+        // Short | UShort
+        case 16 if gray  => BufferedImage.TYPE_USHORT_GRAY -> setShort
+        case 16          => ???
+        // Int | Float
+        case 32 if gray  => ???
+        case 32 if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
+        case 32 if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
+        // Double
+        case 64          => ???
+      }*/
+
+      val img = new BufferedImage(mat.width(), mat.height(), tpe)
+      setData(img.getRaster.getDataBuffer)
+      img
+    }
+  }
+
   trait ConfigurationsPanelBuilder{
     frame: GenericSimpleAppFrame with FrameExec =>
 
@@ -218,12 +294,12 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       val elems: Map[String, Seq[Component with UpdateInterface]]
 
       lazy val applyButton = triggerFor{
-        try imageMat = exec()
-        catch {
-          case thr: Throwable => Dialog.showMessage(message = thr.toString,
-                                                    title = "Error",
-                                                    messageType = Dialog.Message.Error)
-        }
+        imageMat = exec()
+//        catch {
+//          case thr: Throwable => Dialog.showMessage(message = thr.toString,
+//                                                    title = "Error",
+//                                                    messageType = Dialog.Message.Error)
+//        }
       }.button("Apply")
 
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
