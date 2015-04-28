@@ -174,6 +174,7 @@ object BufferedImageColor{
     case BufferedImage.TYPE_4BYTE_ABGR                              => ColorMode.BGRA
     case BufferedImage.TYPE_INT_RGB                                 => ColorMode.RGB
     case BufferedImage.TYPE_INT_ARGB                                => ColorMode.RGBA
+    case BufferedImage.TYPE_BYTE_GRAY                               => ColorMode.Gray
   }
 
 }

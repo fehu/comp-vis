@@ -1,9 +1,11 @@
 package feh.tec.cvis.gui
 
+import java.awt.color.ColorSpace
+import java.util
 import javax.swing.filechooser.{FileNameExtensionFilter, FileFilter}
 
 import scala.collection.mutable
-import java.awt.{Color, Dimension}
+import java.awt.{Transparency, Color, Dimension}
 import java.awt.image._
 import java.io.File
 import javax.imageio.ImageIO
@@ -150,10 +152,16 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     type Config  <: GenericConfigurationPanel with PanelExec[_, _]
 
-    protected var imageMat = toMat(originalImage)
+    private var _imageMat = toMat(originalImage)
+    protected def imageMat = _imageMat
+    protected def setImageMat(mat: Mat) = {
+      _imageMat = mat
+      _modifiedImage = toBufferImage(imageMat)
+    }
 
-    def modifiedImage = toBufferImage(imageMat)
-    
+    private var _modifiedImage = toBufferImage(imageMat)
+    def modifiedImage = _modifiedImage
+
     case class Runner[Params, Src, R](exec: Params => Src => R)
     object Runner{
       def create[Params, Src, R](exec: Src => Params => R): Runner[Params, Src, R] = new Runner(params => src => exec(src)(params))
@@ -204,7 +212,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def matPanelExec(mp: MatPanelExec) = {
       val mat = mp.exec()
-      frame.imageMat = mat
+      frame.setImageMat(mat)
       frame.modified.repaint()
     }
   }
@@ -245,10 +253,10 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       val setByte  = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferByte].getData)
       val setShort = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferShort].getData)
       val setInt   = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
-      val setFloat = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
+      val setFloat = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferFloat].getData)
 
-      // todo ???
-      val (tpe, setData) = mat.depth() match {
+
+      def tpe = PartialFunction.condOpt(mat.depth()) {
         // Byte
         case CvType.CV_8U  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
         case CvType.CV_8U  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
@@ -263,25 +271,35 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         case CvType.CV_32F if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
       }
 
-      /* * 8 match {
-        // Byte
-        case 8  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
-        case 8  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
-        case 8  if alpha => BufferedImage.TYPE_4BYTE_ABGR -> setByte
-        // Short | UShort
-        case 16 if gray  => BufferedImage.TYPE_USHORT_GRAY -> setShort
-        case 16          => ???
-        // Int | Float
-        case 32 if gray  => ???
-        case 32 if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
-        case 32 if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
-        // Double
-        case 64          => ???
-      }*/
+//
+//      val img = new BufferedImage(mat.width(), mat.height(), tpe)
+//      setData(img.getRaster.getDataBuffer)
+//      img
 
-      val img = new BufferedImage(mat.width(), mat.height(), tpe)
-      setData(img.getRaster.getDataBuffer)
-      img
+      def mkGrayModel(btpe: Int, depth: Int) = {
+        val cs  = ColorSpace.getInstance(ColorSpace.CS_GRAY)
+        val nBits: Array[Int] = Array(depth)
+        new ComponentColorModel(cs, nBits, alpha, true, Transparency.OPAQUE, btpe)
+      }
+
+      def manually = {
+        val (colorModel, setData) = mat.depth() match{
+          case CvType.CV_32F if gray => mkGrayModel(DataBuffer.TYPE_FLOAT, 32) -> setFloat
+        }
+        val raster = colorModel.createCompatibleWritableRaster(mat.width, mat.height)
+        setData(raster.getDataBuffer)
+        new BufferedImage(colorModel, raster, false, new util.Hashtable())
+      }
+
+
+
+      tpe.map{
+               case (tpe, setData) =>
+                 val img = new BufferedImage(mat.width(), mat.height(), tpe)
+                 setData(img.getRaster.getDataBuffer)
+                 img
+             }
+        .getOrElse(manually)
     }
   }
 
@@ -289,17 +307,19 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     frame: GenericSimpleAppFrame with FrameExec =>
 
     trait SimpleVerticalPanel extends GridBagPanel with GenericConfigurationPanel{
-      self: MatPanelExec =>
+      pexec: MatPanelExec =>
 
       val elems: Map[String, Seq[Component with UpdateInterface]]
 
       lazy val applyButton = triggerFor{
-        imageMat = exec()
-//        catch {
-//          case thr: Throwable => Dialog.showMessage(message = thr.toString,
-//                                                    title = "Error",
-//                                                    messageType = Dialog.Message.Error)
-//        }
+//        exec()
+        matPanelExec(pexec)
+        try frame.updateForms()
+        catch {
+          case thr: Throwable => Dialog.showMessage(message = thr.toString,
+                                                    title = "Error",
+                                                    messageType = Dialog.Message.Error)
+        }
       }.button("Apply")
 
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))

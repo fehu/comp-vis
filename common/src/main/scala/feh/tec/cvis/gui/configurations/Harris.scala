@@ -71,6 +71,16 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 
         val max = caps.collectFirst{ case ArgModifier.MaxCap(mx) => mx }
         val min = caps.collectFirst{ case ArgModifier.MinCap(mn) => mn }
+        val step = max.flatMap{
+          mx =>
+            min map {
+              mn =>
+                num match {
+                  case n: Integral[N] => n.one
+                  case n: Fractional[N] => n.div(n.minus(mx, mn), n.fromInt(100))
+                }
+            }
+                          }
         val pos  = caps exists { case _: ArgModifier.Positive[_] => true   ; case _ => false }
         val nneg = caps.exists{ case _: ArgModifier.NonNegative[_] => true ; case _ => false }
 
@@ -78,7 +88,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 //        println(s"\tcaps = $caps, max = $max. min = $min, positive = $pos, not-negative = $nneg")
 
         val control =
-          if(caps.size == 2)  controlForNumeric(get)(set).slider(min.get, max.get, num.one)
+          if(caps.size == 2)  controlForNumeric(get)(set).slider(min.get, max.get, step.get, _.Left)
           else controlForOrdered(get)(set).spinner |> {
             cntr =>
               max map cntr.maxValue getOrElse cntr |> {

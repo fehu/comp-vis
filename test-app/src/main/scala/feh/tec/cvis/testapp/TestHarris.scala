@@ -40,20 +40,26 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
             case (form, label) => label.formMeta.form :: form.formMeta.form :: Nil
           }
 
-        def kBounds = Some(MinCap(-10.0) -> MaxCap(10.0))
+        def kBounds = Some(MinCap(0.04) -> MaxCap(0.06))
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner(
           params =>
             src =>
               cvtColor(src, ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None) |> {
                 grayImg =>
-                  grayImg.convertTo(grayImg, CvType.CV_8U) // todo mutating!
-                  cornerHarris(grayImg, blockSize, kSize, k, Option(borderType))
+//                  println("grayImg = " + grayImg)
+//                  grayImg.convertTo(grayImg, CvType.CV_8U) // todo mutating!
+//                  println("grayImg = " + grayImg)
+                  val res = cornerHarris(grayImg, blockSize, kSize, k, Option(borderType))
+                  println("res = " + res)
+                  println("res is zero " + res.get(0,0).forall(_ == 0))
+                  res
               }
 
         )
 
       }
 
+      frame.updateForms()
     }
 }
