@@ -6,7 +6,7 @@ import feh.tec.cvis.common.describe.ArgModifier.{MaxCap, MinCap}
 import feh.tec.cvis.common.describe.Harris
 import feh.tec.cvis.common._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import feh.tec.cvis.gui.configurations.Harris
+import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
 import org.opencv.core.{CvType, Core, Mat}
 import scala.reflect.ClassTag
 import scala.swing.Component
@@ -40,7 +40,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
             case (form, label) => label.formMeta.form :: form.formMeta.form :: Nil
           }
 
-        def kBounds = Some(MinCap(0.04) -> MaxCap(0.06))
+        def kStep = Some(GuiArgModifier.Step(0.001))
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner(
           params =>
@@ -50,7 +50,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //                  println("grayImg = " + grayImg)
 //                  grayImg.convertTo(grayImg, CvType.CV_8U) // todo mutating!
 //                  println("grayImg = " + grayImg)
-                  val res = cornerHarris(grayImg, blockSize, kSize, k, Option(borderType))
+                  val res = cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
                   println("res = " + res)
                   println("res is zero " + res.get(0,0).forall(_ == 0))
                   res

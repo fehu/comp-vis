@@ -10,7 +10,7 @@ import org.opencv.core.Mat
  */
 
 object Harris {
-  type Params = (Int, Int, Double, Option[BorderExtrapolationMethod])
+  type Params = (Int, Int, BigDecimal, Option[BorderExtrapolationMethod])
 
   /** Neighborhood size. */
   object BlockSize  extends ArgDescriptor[Int]("Block size", "neighborhood size", Integer, Positive)
@@ -19,14 +19,14 @@ object Harris {
   object KSize      extends ArgDescriptor[Int]("k size", "aperture parameter for the \"Sobel\" operator", Integer, Positive)
 
   /** Harris detector free parameter.*/
-  object K          extends ArgDescriptor[Double]("k", "Harris detector free parameter") //(MaxCap(1), MinCap(-1))
+  object K          extends ArgDescriptor[BigDecimal]("k", "Harris detector free parameter", MinCap(0.04), MaxCap(0.06))
 
   /** Pixel extrapolation method. */
   object BorderType extends ArgDescriptor[BorderExtrapolationMethod]("Border type", "pixel extrapolation method", Optional)
 
   object Descriptor extends CallDescriptor[CornerDetection, Mat, Params, Mat](
     scope => mat => {
-      case (blockSize, kSize, k, borderType) => scope.cornerHarris(mat, blockSize, kSize, k, borderType)
+      case (blockSize, kSize, k, borderType) => scope.cornerHarris(mat, blockSize, kSize, k.toDouble, borderType)
     }
   )
 }

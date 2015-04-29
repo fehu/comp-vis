@@ -35,7 +35,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 
       protected var _blockSize: Int = 1
       protected var _kSize: Int = 1
-      protected var _k: Double = 0
+      protected var _k: BigDecimal = 0.05
       protected var _borderType: BorderExtrapolationMethod = borderTypes.head
 
       final def blockSize = _blockSize
@@ -51,8 +51,8 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 
 
 
-      def kBounds: Option[(MinCap[Double], MaxCap[Double])]
-      protected def kArgs = kBounds.map(p => p._1 &: p._2 &: Harris.K) getOrElse Harris.K
+      def kStep: Option[GuiArgModifier.Step[BigDecimal]]
+      protected def kArgs = kStep.map(_ &: Harris.K) getOrElse Harris.K
 
       lazy val blockSizeBuilder  = mkNumericControl(Harris.BlockSize)(blockSize, _blockSize = _)
       lazy val kSizeBuilder      = mkNumericControl(Harris.KSize)(kSize, _kSize = _)
@@ -69,26 +69,29 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
           case min: ArgModifier.MinCap[_] => min
         }
 
-        val max = caps.collectFirst{ case ArgModifier.MaxCap(mx) => mx }
-        val min = caps.collectFirst{ case ArgModifier.MinCap(mn) => mn }
-        val step = max.flatMap{
-          mx =>
-            min map {
-              mn =>
-                num match {
-                  case n: Integral[N] => n.one
-                  case n: Fractional[N] => n.div(n.minus(mx, mn), n.fromInt(100))
-                }
-            }
-                          }
-        val pos  = caps exists { case _: ArgModifier.Positive[_] => true   ; case _ => false }
-        val nneg = caps.exists{ case _: ArgModifier.NonNegative[_] => true ; case _ => false }
+        import num._
+
+        lazy val max = caps.collectFirst{ case ArgModifier.MaxCap(mx) => mx }
+        lazy val min = caps.collectFirst{ case ArgModifier.MinCap(mn) => mn }
+        lazy val step = descr.modifiers.collectFirst{ case GuiArgModifier.Step(s) => s }
+                    .getOrElse{
+                                num match {
+                                  case num: Integral[N]   => num.one
+                                  case num: Fractional[N] => num.div(max.get - min.get, num.fromInt(100))
+                                }
+                              }
+        lazy val domain = Stream.iterate(min.get)(_ + step).takeWhile(_ <= max.get).toList //.map(ns*).map(math.round).map(_.toFloat/ns)
+//          Stream.iterate(min.get)(num.plus(_, step)).takeWhile(num.lteq(_, max.get)).toSeq
+
+        lazy val pos  = caps exists { case _: ArgModifier.Positive[_] => true   ; case _ => false }
+        lazy val nneg = caps.exists{ case _: ArgModifier.NonNegative[_] => true ; case _ => false }
 
 //        println(s"control for $descr")
 //        println(s"\tcaps = $caps, max = $max. min = $min, positive = $pos, not-negative = $nneg")
 
         val control =
-          if(caps.size == 2)  controlForNumeric(get)(set).slider(min.get, max.get, step.get, _.Left)
+          if(caps.size == 2) controlGivenDomain(get)(set).slider(domain, _.Left)
+//            controlForNumeric(get)(set).slider(min.get, max.get, step, _.Left)
           else controlForOrdered(get)(set).spinner |> {
             cntr =>
               max map cntr.maxValue getOrElse cntr |> {
