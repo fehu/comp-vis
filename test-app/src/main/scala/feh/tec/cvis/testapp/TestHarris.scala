@@ -1,6 +1,6 @@
 package feh.tec.cvis.testapp
 
-import java.awt.Dimension
+import java.awt.{Color, Dimension}
 import java.awt.image._
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
@@ -10,6 +10,7 @@ import feh.util._
 import org.opencv.core.{Core, Mat}
 import scala.swing.Component
 import scala.swing.Swing._
+import Drawing._
 
 object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with Harris{
 
@@ -48,31 +49,41 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //                                              (blockSize, kSize, k.toDouble, Option(borderType)))
 //        )
 
-        def isCorner: EigenValsAndVecs => Boolean = {
-          eign =>
-            val r = eign.det / math.pow(eign.trace, 2)
-            math.abs(r) >= 1
-        }
+        def cornerResponse: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
+        def isCorner      : EigenValsAndVecs => Boolean   =   eign => math.abs(cornerResponse(eign)) >= 1
 
 
-        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
+        override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>
             src =>
-              cvtColor(src, ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None) |> {
+              val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
+              cvtColor(src, cvt) |> {
                 grayImg =>
-                  val res = cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
+                  val eigns = cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
+                  println("eigns.length = " + eigns.length)
 
-                  println("res = " + res)
-                  println("res.length = " + res.size)
+                  val sorted    = eigns.lazyPairs.mapVals(cornerResponse).sortBy(_._2)
+                  val n = sorted.length
+                  val filtered  = sorted.take(n/20) ++ sorted.takeRight(n/20)
 
-                  val filtered = res.lazyPairs.withFilter(_._2 |> isCorner)
+                  println("filtered = " + filtered.mkString("\t", "\n\t", ""))
+//                  println("filtered = " + eigns.flatten.map(cornerReaction andThen math.abs).filter(_ > 10).sorted.mkString(", "))
 
-                  println("filtered.length = " + res.length)
-
-                  grayImg
+                  grayImg.convert(cvt.inverse) $${
+                    res =>
+                      filtered.foreach{
+                                        case ((i, j), r) =>
+                                          val radious = r.toInt match {
+                                            case 0          => 1
+                                            case x if x < 0 => 5
+                                            case x          => 10
+                                          }
+                                          res.draw.circle(i -> j, radious, Color.red)
+                                      }
+                  }
               }
 
-        )
+        }
 
       }
 
