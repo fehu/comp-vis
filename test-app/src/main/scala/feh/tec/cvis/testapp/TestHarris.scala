@@ -2,16 +2,14 @@ package feh.tec.cvis.testapp
 
 import java.awt.Dimension
 import java.awt.image._
-import feh.tec.cvis.common.describe.ArgModifier.{MaxCap, MinCap}
-import feh.tec.cvis.common.describe.Harris
+import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
-import org.opencv.core.{CvType, Core, Mat}
-import scala.reflect.ClassTag
+import feh.util._
+import org.opencv.core.{Core, Mat}
 import scala.swing.Component
 import scala.swing.Swing._
-import feh.util._
 
 object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with Harris{
 
@@ -42,18 +40,36 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         def kStep = Some(GuiArgModifier.Step(0.001))
 
+//        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
+//          params =>
+//            CallDescriptor.WithScopeAndParams(ConvertColor.Descriptor, frame,
+//                                              (ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None)) chain
+//            CallDescriptor.WithScopeAndParams(Harris.Descriptor, frame,
+//                                              (blockSize, kSize, k.toDouble, Option(borderType)))
+//        )
+
+        def isCorner: EigenValsAndVecs => Boolean = {
+          eign =>
+            val r = eign.det / math.pow(eign.trace, 2)
+            math.abs(r) >= 1
+        }
+
+
         override lazy val runner: Runner[Params, Mat, Mat] = Runner(
           params =>
             src =>
               cvtColor(src, ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None) |> {
                 grayImg =>
-//                  println("grayImg = " + grayImg)
-//                  grayImg.convertTo(grayImg, CvType.CV_8U) // todo mutating!
-//                  println("grayImg = " + grayImg)
-                  val res = cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
+                  val res = cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
+
                   println("res = " + res)
-                  println("res is zero " + res.get(0,0).forall(_ == 0))
-                  res
+                  println("res.length = " + res.size)
+
+                  val filtered = res.lazyPairs.withFilter(_._2 |> isCorner)
+
+                  println("filtered.length = " + res.length)
+
+                  grayImg
               }
 
         )

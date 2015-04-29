@@ -3,71 +3,70 @@ package feh.tec.cvis.common
 import java.awt.image.{DataBufferByte, BufferedImage}
 import java.io.File
 
-import org.opencv.core.{CvType, MatOfInt, MatOfKeyPoint, Mat}
+import org.opencv.core._
 import org.opencv.features2d.FeatureDetector
-
 import org.opencv.imgproc.Imgproc
 import feh.util._
 import scala.collection.convert.decorateAll._
 import scala.reflect.ClassTag
 
+object Helper{
+  type Array2D[T] = Array[Array[T]]
 
-/*
- *                Image IO
- */
-//import org.opencv.highgui.Highgui
+  def withMat[R](f: Mat => R) = f(new Mat())
 
-//trait ImageIO{
-//  type WriteParams = Map[Int, Int] // instead of MatOfInt
-//
-//  def imRead(file: String, flags: ImRead.LoadColorType = ImRead.Color): Mat = Highgui.imread(file, flags.value)
-////  def imread(file: Path): Mat = imread(file.mkString(File.separator))
-//
-//  def imWrite(filename: String, img: Mat, params: WriteParams = Map()) = {
-//    val p = params.map{ case (k, v) => k :: v :: Nil }.flatten.toSeq
-//    if(p.nonEmpty) Highgui.imwrite(filename, img,  new MatOfInt(p: _*))
-//  }
-//}
+  def toArray[T: ClassTag](mat: Mat) = {
+    val arr = Array.ofDim[T](mat.width * mat.height * mat.channels)
+    implicitly[ClassTag[T]] match {
+      case ClassTag.Byte    => mat.get(0, 0, arr.asInstanceOf[Array[Byte]])
+      case ClassTag.Short   => mat.get(0, 0, arr.asInstanceOf[Array[Short]])
+      case ClassTag.Int     => mat.get(0, 0, arr.asInstanceOf[Array[Int]])
+      case ClassTag.Float   => mat.get(0, 0, arr.asInstanceOf[Array[Float]])
+      case ClassTag.Double  => mat.get(0, 0, arr.asInstanceOf[Array[Double]])
+    }
+    arr
+  }
 
-/*
- *                Creating Mat
- */
+  def mapMat[R: ClassTag](mat: Mat, f: (Int, Int) => Array[Double] => R): Array2D[R] = {
+    val arr = Array.ofDim[R](mat.rows, mat.cols)
+    for{
+      i <- 0 until mat.rows
+      j <- 0 until mat.cols
+      v = mat.get(i, j)
+    } arr(i)(j) = f(i, j)(v)
+    arr
+  }
 
-@deprecated
-trait MatCreation{
-//  implicit class BufferedImageToMatWrapper(img: BufferedImage){
-//    def toMat: Mat = {
-//      val m = new Mat(img.getHeight, img.getWidth, img.getType)
-//      m put(0, 0, img.getData.getDataBuffer.asInstanceOf[DataBufferByte].getData) // todo ??? DataBufferByte
-//      m
-//    }
-//  }
+  implicit class MatMapWrapper(mat: Mat){
+    def map[R: ClassTag](f: (Int, Int) => Array[Double] => R) = mapMat(mat, f)
+  }
 
-//  def mkMat[N: CanFillMat](width: Int, height: Int, tpe: Int, data: Array[N]): Mat =
-//    new Mat(height, width, tpe) $$ ( implicitly[CanFillMat[N]].mk(_, data) )
-//
-//  trait CanFillMat[From]{
-//    def mk(mat: Mat, arr: Array[From])
-//  }
-//
-//  trait CanExtractMat[As]{
-//    def get(mat: Mat): Array[As]
-//  }
+  implicit class Array2DWrapper[T](arr: Array2D[T]){
+    lazy val rows = arr.length
+    lazy val cols = if(rows > 0) arr(0).length else 0
 
-  //{ _.put(0, 0, data) }
-  //.get(0, 0, data)
+    def size = rows * cols
+
+    def map[R: ClassTag](f: (Int, Int) => T => R): Array2D[R] = {
+      val res = Array.ofDim[R](rows, cols)
+      for{
+        i <- 0 until rows
+        j <- 0 until cols
+        v = arr(i)(j)
+      } res(i)(j) = f(i, j)(v)
+      res
+    }
+
+    def lazyPairs: Stream[((Int, Int), T)] = Stream.from(0).take(rows).flatMap(
+      i => Stream.from(0).take(cols).map{
+        j =>
+          (i, j) -> arr(i)(j)
+      }
+    )
+  }
 }
 
-// from nu.pattern/opencv/srcs/opencv-2.4.9-7-sources.jar!/org/opencv/highgui/Highgui.java
-//object ImRead{
-//  abstract class LoadColorType(val value: Int)
-//
-//  case object Unchanged extends LoadColorType(-1)
-//  case object Grayscale extends LoadColorType(0)
-//  case object Color     extends LoadColorType(1)
-//  case object AnyDepth  extends LoadColorType(2)
-//  case object AnyColor  extends LoadColorType(4)
-//}
+import Helper._
 
 /*
  *                Border Extrapolation
@@ -179,18 +178,6 @@ object BufferedImageColor{
 
 }
 
-//object MatColorMode {
-//  import ColorMode._
-//
-//  def code[T: ClassTag](colorMode: ColorMode): Int = ???
-//
-//  lazy val homograficMapping: Map[ColorMode, Int] = Map(
-//    RGB   -> CvType.CV2
-//
-//  )
-//  lazy val reprDependantMapping: Map[(ColorMode, ClassTag[_]), Int] = ???
-//}
-
 
 /*
  *                Corner Detection
@@ -199,6 +186,9 @@ object BufferedImageColor{
 object CornerDetection extends CornerDetection
 
 trait CornerDetection{
+
+  // C++:  void cornerHarris(Mat src, Mat& dst, int blockSize, int ksize, double k, int borderType = BORDER_DEFAULT)
+
   /**
    * <p>Harris edge detector.</p>
    *
@@ -221,11 +211,82 @@ trait CornerDetection{
    *
    * @see <a href="http://docs.opencv.org/modules/imgproc/doc/feature_detection.html#cornerharris">org.opencv.imgproc.Imgproc.cornerHarris</a>
    */
-  def cornerHarris(src: Mat, blockSize: Int, ksize: Int, k: Double, borderType: Option[BorderExtrapolationMethod] = None): Mat = {
-    val dist = src.clone()
-    borderType map (_.value) map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
-                                  Imgproc.cornerHarris(src, dist, blockSize, ksize, k)
-    dist
+  def cornerHarris(src: Mat, blockSize: Int, ksize: Int, k: Double, borderType: Option[BorderExtrapolationMethod] = None): Mat =
+    new Mat() $${
+      dist =>
+        Imgproc.cornerHarris(src, dist, blockSize, ksize, k, borderType map (_.value) getOrElse Core.BORDER_DEFAULT)
+    }
+//  {
+//    val dist = src.clone()
+//    borderType map (_.value) map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
+//                                  Imgproc.cornerHarris(src, dist, blockSize, ksize, k)
+//    dist
+//  }
+
+  // C++:  void cornerEigenValsAndVecs(Mat src, Mat& dst, int blockSize, int ksize, int borderType = BORDER_DEFAULT)
+
+  /**
+   * <p>Calculates eigenvalues and eigenvectors of image blocks for corner detection.</p>
+   *
+   * <p>For every pixel <em>p</em>, the function <code>cornerEigenValsAndVecs</code>
+   * considers a <code>blockSize</code> <em>x</em> <code>blockSize</code>
+   * neighborhood <em>S(p)</em>. It calculates the covariation matrix of
+   * derivatives over the neighborhood as:</p>
+   *
+   * <p><em>M = sum(by: S(p))(dI/dx)^2 sum(by: S(p))(dI/dx dI/dy)^2
+   * sum(by: S(p))(dI/dx dI/dy)^2 sum(by: S(p))(dI/dy)^2 </em></p>
+   *
+   * <p>where the derivatives are computed using the "Sobel" operator.</p>
+   *
+   * <p>After that, it finds eigenvectors and eigenvalues of <em>M</em> and stores
+   * them in the destination image as <em>(lambda_1, lambda_2, x_1, y_1, x_2,
+   * y_2)</em> where</p>
+   * <ul>
+   *   <li> <em>lambda_1, lambda_2</em> are the non-sorted eigenvalues of
+   * <em>M</em>
+   *   <li> <em>x_1, y_1</em> are the eigenvectors corresponding to
+   * <em>lambda_1</em>
+   *   <li> <em>x_2, y_2</em> are the eigenvectors corresponding to
+   * <em>lambda_2</em>
+   * </ul>
+   *
+   * <p>The output of the function can be used for robust edge or corner detection.</p>
+   *
+   * @param src Input single-channel 8-bit or floating-point image.
+   * @param blockSize Neighborhood size (see details below).
+   * @param ksize Aperture parameter for the "Sobel" operator.
+   * @param borderType Pixel extrapolation method. See "borderInterpolate".
+   * @return Matrix[EigenValsAndVecs]. It has the same size as  <code>src</code>.
+   *
+   * @see <a href="http://docs.opencv.org/modules/imgproc/doc/feature_detection.html#cornereigenvalsandvecs">org.opencv.imgproc.Imgproc.cornerEigenValsAndVecs</a>
+   * @see org.opencv.imgproc.Imgproc#cornerHarris
+   * @see org.opencv.imgproc.Imgproc#cornerMinEigenVal
+   * @see org.opencv.imgproc.Imgproc#preCornerDetect
+   */
+  def cornerEigenValsAndVecs(src: Mat, blockSize: Int, ksize: Int, borderType: Option[BorderExtrapolationMethod] = None): Array[Array[EigenValsAndVecs]] =
+    withMat{
+      dist =>
+        Imgproc.cornerEigenValsAndVecs(src, dist, blockSize, ksize, borderType map (_.value) getOrElse Core.BORDER_DEFAULT)
+        dist.map(
+          (i, j) => {
+            case Array(lambda1, lambda2, x1, y1, x2, y2) => EigenValsAndVecs(lambda1.toFloat, x1.toFloat -> y1.toFloat,
+                                                                             lambda2.toFloat, x2.toFloat -> y2.toFloat)
+          }
+        )
+//        val mtr = toArrayMatrix[Float](dist, 6)
+//        println("mtr = " + mtr)
+//        mtr.map(
+//          (i, j) => {
+//            case Array(lambda1, lambda2, x1, y1, x2, y2) => EigenValsAndVecs(lambda1, x1 -> y1,
+//                                                                             lambda2, x2 -> y2)
+//          }
+//        )
+    }
+
+  case class EigenValsAndVecs(lambda1: Float, vec1: (Float, Float),
+                              lambda2: Float, vec2: (Float, Float)){
+    def det = lambda1 * lambda2
+    def trace = lambda1 + lambda2
   }
 
 }

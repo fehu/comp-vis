@@ -3,14 +3,10 @@ package feh.tec.cvis.gui
 import java.awt.color.ColorSpace
 import java.util
 import javax.swing.filechooser.{FileNameExtensionFilter, FileFilter}
-
-import scala.collection.mutable
 import java.awt.{Transparency, Color, Dimension}
 import java.awt.image._
 import java.io.File
 import javax.imageio.ImageIO
-import feh.tec.cvis.common.MatCreation
-import feh.tec.cvis.gui.Helper._
 import org.opencv.core.{CvType, Mat}
 import scala.reflect.ClassTag
 import scala.swing._
@@ -230,8 +226,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       }
 
       val channels = buff.getSize / (img.getHeight * img.getWidth)
-
-      println(s"toMat: depth=$depth, channels=$channels")
 
       val mat = new Mat(img.getHeight, img.getWidth, CvType.makeType(depth, channels))
       buff match {
