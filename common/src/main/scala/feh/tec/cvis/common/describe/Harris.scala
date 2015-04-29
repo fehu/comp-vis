@@ -19,7 +19,7 @@ object Harris {
   object KSize      extends ArgDescriptor[Int]("k size", "aperture parameter for the \"Sobel\" operator", Integer, Positive)
 
   /** Harris detector free parameter.*/
-  object K          extends ArgDescriptor[BigDecimal]("k", "Harris detector free parameter", MinCap(0.04), MaxCap(0.06))
+  object K          extends ArgDescriptor[BigDecimal]("k", "Harris detector free parameter", MinCap(0.01), MaxCap(0.1))
 
   /** Pixel extrapolation method. */
   object BorderType extends ArgDescriptor[BorderExtrapolationMethod]("Border type", "pixel extrapolation method", Optional)

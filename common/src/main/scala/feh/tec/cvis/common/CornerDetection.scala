@@ -38,12 +38,6 @@ trait CornerDetection{
       dist =>
         Imgproc.cornerHarris(src, dist, blockSize, ksize, k, borderType map (_.value) getOrElse Core.BORDER_DEFAULT)
     }
-  //  {
-  //    val dist = src.clone()
-  //    borderType map (_.value) map (Imgproc.cornerHarris(src, dist, blockSize, ksize, k, _)) getOrElse
-  //                                  Imgproc.cornerHarris(src, dist, blockSize, ksize, k)
-  //    dist
-  //  }
 
   // C++:  void cornerEigenValsAndVecs(Mat src, Mat& dst, int blockSize, int ksize, int borderType = BORDER_DEFAULT)
 

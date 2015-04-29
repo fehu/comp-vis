@@ -7,6 +7,7 @@ import java.awt.{Transparency, Color, Dimension}
 import java.awt.image._
 import java.io.File
 import javax.imageio.ImageIO
+import feh.tec.cvis.common.describe.CallDescriptor.Callable
 import org.opencv.core.{CvType, Mat}
 import scala.reflect.ClassTag
 import scala.swing._
@@ -148,7 +149,11 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     type Config  <: GenericConfigurationPanel with PanelExec[_, _]
 
-    private var _imageMat = toMat(originalImage)
+    protected val originalMat = toMat(originalImage)
+
+    protected def applyMat: Mat
+
+    private var _imageMat = originalMat
     protected def imageMat = _imageMat
     protected def setImageMat(mat: Mat) = {
       _imageMat = mat
@@ -160,6 +165,11 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     case class Runner[Params, Src, R](exec: Params => Src => R)
     object Runner{
+      def callable[Params, Src, R](f: Params => Callable[Src, R]): Runner[Params, Src, R] = Runner(
+        params =>
+          src =>
+            f(params).call(src)
+      )
       def create[Params, Src, R](exec: Src => Params => R): Runner[Params, Src, R] = new Runner(params => src => exec(src)(params))
     }
 
@@ -202,7 +212,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       protected def getParams(): Params
       
-      def exec(): Mat = runner.exec(getParams())(frame.imageMat)
+      def exec(): Mat = runner.exec(getParams())(frame.applyMat)
     }
 
 
@@ -303,12 +313,14 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     trait SimpleVerticalPanel extends GridBagPanel with GenericConfigurationPanel{
       pexec: MatPanelExec =>
 
-      val elems: Map[String, Seq[Component with UpdateInterface]]
+      val elems: Seq[(String, Seq[Component with UpdateInterface])]
 
       lazy val applyButton = triggerFor{
 //        exec()
-        matPanelExec(pexec)
-        try frame.updateForms()
+        try {
+          matPanelExec(pexec)
+          frame.updateForms()
+        }
         catch {
           case thr: Throwable => Dialog.showMessage(message = thr.toString,
                                                     title = "Error",

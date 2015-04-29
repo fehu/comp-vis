@@ -31,8 +31,11 @@ object Helper{
     arr
   }
 
-  implicit class MatMapWrapper(mat: Mat){
+  implicit class MatWrapper(mat: Mat){
     def map[R: ClassTag](f: (Int, Int) => Array[Double] => R) = mapMat(mat, f)
+    def mapV[R: ClassTag](f: Array[Double] => R) = mapMat(mat, (_, _) => f)
+
+    def toArray[R: ClassTag] = Helper.toArray(mat)
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){

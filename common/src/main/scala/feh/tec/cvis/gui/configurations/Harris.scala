@@ -25,7 +25,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 
       final type Params = Harris.Params
       
-      def formBuilders: Map[String, (DSLFormBuilder[_], DSLLabelBuilder[_])] = Map(
+      def formBuilders: Seq[(String, (DSLFormBuilder[_], DSLLabelBuilder[_]))] = Seq(
         "block-size"  -> blockSizeBuilder,
         "k-size"      -> kSizeBuilder,
         "k"           -> kBuilder,
@@ -92,7 +92,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
         val control =
           if(caps.size == 2) controlGivenDomain(get)(set).slider(domain, _.Left)
 //            controlForNumeric(get)(set).slider(min.get, max.get, step, _.Left)
-          else controlForOrdered(get)(set).spinner |> {
+          else controlForNumeric(get)(set).spinner() |> {
             cntr =>
               max map cntr.maxValue getOrElse cntr |> {
                 cntr => min map{
