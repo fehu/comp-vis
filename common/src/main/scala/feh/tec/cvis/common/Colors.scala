@@ -33,14 +33,20 @@ object ColorMode{
   * @see http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html#cvtcolor
   */
 trait ColorConverting {
-  def cvtColor(src: Mat, conv: ColorConversion, dstCnOpt: Option[Int]): Mat = {
+  def cvtColor(src: Mat, conv: ColorConversion, dstCnOpt: Option[Int] = None): Mat = {
     val convCode = ColorConversion.code(conv) getOrThrow s"no conversion code for $conv"
     new Mat() $$ (Imgproc.cvtColor(src, _, convCode, dstCnOpt getOrElse 0))
+  }
+
+  implicit class ColorConvertWrapper(img: Mat){
+    def convert(conv: ColorConversion, dstCnOpt: Option[Int] = None) = cvtColor(img, conv, dstCnOpt)
   }
 }
 
 
-case class ColorConversion(from: ColorMode, to: ColorMode)
+case class ColorConversion(from: ColorMode, to: ColorMode){
+  def inverse = ColorConversion(to, from)
+}
 
 object ColorConversion{
   import ColorMode._
