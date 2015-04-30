@@ -17,7 +17,7 @@ import Drawing._
 
 object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with Harris{
 
-  System.loadLibrary(Core.NATIVE_LIBRARY_NAME)
+  CV.loadNative()
 
   def mkSimpleFrame(image: BufferedImage,
                     frameTitle: String,
@@ -43,10 +43,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
                                     .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
-
-//        object ResponseFunc extends Enumeration{
-//          val Original, DetByTrace, DetByTraceSq = Value
-//        }
 
         var responseFunc: ResponseFunc = ResponseFunc.Original
         lazy val responseFuncControl = controlForSeq(ResponseFunc.all,  static = true)
@@ -123,78 +119,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               }
 
         }
-
-/*        override lazy val runner: Runner[Params, Mat, Mat] = Runner {
-          params =>
-            src =>
-              val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
-              cvtColor(src, cvt) |> {
-                grayImg =>
-                  val resp = cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
-                  println("resp.length = " + (resp.width * resp.height))
-
-                  val filtered = resp.mapV { case Array(d) => d }
-                                     .lazyPairs
-                                     .filter(_._2 > threshold)
-//                                     .sorted //.take(100)
-
-                  println("filtered.length = " + filtered.length)
-//                  println("filtered = " + filtered)
-                  //                  println("filtered = " + eigns.flatten.map(cornerReaction andThen math.abs).filter(_ > 10).sorted.mkString(", "))
-
-                  grayImg.convert(cvt.inverse) $${
-                    res =>
-                      filtered.foreach{
-                                        case ((i, j), r) =>
-//                                          val radious = r.toInt*10 match {
-//                                            case 0          => 1
-//                                            case x if x < 0 => 20
-//                                            case x          => 100
-//                                          }
-                                          res.draw.circle(i -> j, 1, Color.red)
-                                      }
-                  }
-              }
-
-        }*/
-
-/*
-        def cornerResponse: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
-        def isCorner      : EigenValsAndVecs => Boolean   =   eign => math.abs(cornerResponse(eign)) >= 1
-
-
-        override lazy val runner: Runner[Params, Mat, Mat] = Runner {
-          params =>
-            src =>
-              val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
-              cvtColor(src, cvt) |> {
-                grayImg =>
-                  val eigns = cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
-                  println("eigns.length = " + eigns.length)
-
-                  val sorted    = eigns.lazyPairs.mapVals(cornerResponse).sortBy(_._2)
-                  val n = sorted.length
-                  val filtered  = sorted.take(n/100) //++ sorted.takeRight(100)
-
-                  println("filtered = " + filtered.mkString(",")) //("\t", "\n\t", "")
-//                  println("filtered = " + eigns.flatten.map(cornerReaction andThen math.abs).filter(_ > 10).sorted.mkString(", "))
-
-                  grayImg.convert(cvt.inverse) $${
-                    res =>
-                      filtered.foreach{
-                                        case ((i, j), r) =>
-                                          val radious = r.toInt*10 match {
-                                            case 0          => 1
-                                            case x if x < 0 => 20
-                                            case x          => 100
-                                          }
-                                          res.draw.circle(i -> j, radious, Color.red)
-                                      }
-                  }
-              }
-
-        }
-*/
 
       }
 

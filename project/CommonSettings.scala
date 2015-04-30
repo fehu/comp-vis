@@ -11,7 +11,9 @@ object CommonSettings {
   )
 
   System.setProperty("java.library.path", "-Djava.library.path=" + sys.props("java.library.path") + File.pathSeparator
-                                                                 + Seq("libs_opencv", "linux-x64").mkString(File.separator))
+                                                                 + Seq("libs_opencv", systemDependantPath).mkString(File.separator))
 
-
+  def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
+    case ("linux", "amd64") => "linux-x64"
+  }
 }
