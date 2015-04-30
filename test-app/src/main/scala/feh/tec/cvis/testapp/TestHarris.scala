@@ -114,7 +114,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
                   grayImg.convert(cvt.inverse) $${
                     res =>
-                      filtered.foreach{ case ((i, j), r) => res.draw.circle(i -> j, 1, Color.red) }
+                      filtered.foreach{ case ((i, j), r) => res.draw.circle(j -> i, 1, Color.red) }
                   }
               }
 
