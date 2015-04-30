@@ -7,11 +7,12 @@ object CommonSettings {
     organization := "feh.tec",
     scalaVersion := "2.11.6",
     resolvers           += "Fehu's github repo" at "http://fehu.github.io/repo",
-    unmanagedBase in Compile := file("libs_opencv")
+    unmanagedBase in Compile := file("libs/opencv")
   )
 
-  System.setProperty("java.library.path", "-Djava.library.path=" + sys.props("java.library.path") + File.pathSeparator
-                                                                 + Seq("libs_opencv", systemDependantPath).mkString(File.separator))
+  System.setProperty("java.library.path",
+                     "-Djava.library.path=" + sys.props("java.library.path") + File.pathSeparator
+                                            + Seq("libs", "opencv", systemDependantPath).mkString(File.separator))
 
   def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
     case (os, "amd64")          if os startsWith "linux"   => "linux-x64"
