@@ -39,14 +39,10 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       type Config = SimpleVerticalPanel with HarrisConfigurationPanelExec
 
       lazy val configurations = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
-        var threshold: Double = 0.0001
+        var threshold: Double = 0.1
 
         lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
-                                    .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.0001))
-//                                    .minValue(Double.box(0))
-//                                    .step(Double.box(0.1))
-//                                    .setValue
-
+                                    .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
 
         override def formBuilders: Seq[(String, (TestHarris.DSLFormBuilder[_], TestHarris.DSLLabelBuilder[_]))] =
           super.formBuilders ++ Seq("threshold" -> (thresholdControl -> label("Threshold")))

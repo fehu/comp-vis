@@ -53,9 +53,10 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
 
       def kStep: Option[GuiArgModifier.Step[BigDecimal]]
       protected def kArgs = kStep.map(_ &: Harris.K) getOrElse Harris.K
+      protected def kSizeArgs = GuiArgModifier.Step(2) &: Harris.KSize
 
       lazy val blockSizeBuilder  = mkNumericControl(Harris.BlockSize)(blockSize, _blockSize = _)
-      lazy val kSizeBuilder      = mkNumericControl(Harris.KSize)(kSize, _kSize = _)
+      lazy val kSizeBuilder      = mkNumericControl(kSizeArgs)(kSize, _kSize = _)
       lazy val kBuilder          = mkNumericControl(kArgs)(k, _k = _)
       lazy val borderTypeBuilder = mkListControl(Harris.BorderType, borderTypes)(_borderType = _, _.asString)
 
@@ -95,10 +96,12 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
           else controlForNumeric(get)(set).spinner() |> {
             cntr =>
               max map cntr.maxValue getOrElse cntr |> {
-                cntr => min map{
-                  minvalue => cntr.minValue(if(pos) num.min(minvalue, num.zero) else minvalue)
-                } getOrElse
-                  (if(pos) cntr.minValue(num.zero) else cntr)
+                cntr =>
+                  min map{
+                    minvalue => cntr.minValue(if(pos) num.min(minvalue, num.zero) else minvalue)
+                  } getOrElse
+                    (if(pos) cntr.minValue(num.zero) else cntr)
+                  cntr.step(step)
               }
           }
 
