@@ -14,6 +14,9 @@ object CommonSettings {
                                                                  + Seq("libs_opencv", systemDependantPath).mkString(File.separator))
 
   def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
-    case ("linux", "amd64") => "linux-x64"
+    case (os, "amd64") if os startsWith "linux"   => "linux-x64"
+    case (os, "x86")   if os startsWith "linux"   => "linux-x86"
+    case (os, "amd64") if os startsWith "windows" => "win-64"
+    case (os, "x86")   if os startsWith "windows" => "win-32"
   }
 }
