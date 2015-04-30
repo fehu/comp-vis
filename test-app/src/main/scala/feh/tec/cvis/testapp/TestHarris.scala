@@ -38,14 +38,57 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
       type Config = SimpleVerticalPanel with HarrisConfigurationPanelExec
 
-      lazy val configurations = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
+      lazy val configurations: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
         var threshold: Double = 0.1
 
         lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
                                     .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
 
+//        object ResponseFunc extends Enumeration{
+//          val Original, DetByTrace, DetByTraceSq = Value
+//        }
+
+        var responseFunc: ResponseFunc = ResponseFunc.Original
+        lazy val responseFuncControl = controlForSeq(ResponseFunc.all,  static = true)
+                                       .dropDownList{
+                                                      rf =>
+                                                        responseFunc = rf
+                                                        componentAccess.get("k").get.visible = rf == ResponseFunc.Original
+                                                    }
+
+        case class ResponseFunc(name: String, fromGray: Mat => Stream[((Int, Int), Double)]){
+          override def toString = name
+        }
+
+        object ResponseFunc{
+          def all = Original :: DetTrace :: DetTraceSq :: Nil
+
+          object Original extends ResponseFunc("det - k*trace^2",
+                                               grayImg =>
+                                                 cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
+                                                   .mapV { case Array(d) => d }
+                                                   .lazyPairs
+                                                   .filter(_._2 > threshold)
+                                               )
+          object DetTrace   extends ResponseFunc("det / trace",   withEigenValues(cornerResponseDetTrace))
+          object DetTraceSq extends ResponseFunc("det / trace^2", withEigenValues(cornerResponseDetTraceSq))
+
+          def cornerResponseDetTrace:   EigenValsAndVecs => Double    =   eign => eign.det / eign.trace
+          def cornerResponseDetTraceSq: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
+
+          def withEigenValues(response: EigenValsAndVecs => Double) = 
+            (grayImg: Mat) =>
+              cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
+                .lazyPairs
+                .mapVals(response)
+                .filter(_._2 > threshold)
+        }
+
         override def formBuilders: Seq[(String, (TestHarris.DSLFormBuilder[_], TestHarris.DSLLabelBuilder[_]))] =
-          super.formBuilders ++ Seq("threshold" -> (thresholdControl -> label("Threshold")))
+          super.formBuilders/*.filterNot(_._1 == "k")*/ ++ Seq(
+            "responseFunc" -> (responseFuncControl, label("Response Function")),
+            "threshold" -> (thresholdControl -> label("Threshold"))
+          )
 
         lazy val elems: Seq[(String, Seq[Component with UpdateInterface])] =
           formBuilders.mapVals{
@@ -63,8 +106,25 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //            CallDescriptor.Callable()
 //        )
 
-
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
+          params =>
+            src =>
+              val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
+              cvtColor(src, cvt) |> {
+                grayImg =>
+
+                  val filtered = responseFunc.fromGray(grayImg)
+                  println("filtered.length = " + filtered.length)
+
+                  grayImg.convert(cvt.inverse) $${
+                    res =>
+                      filtered.foreach{ case ((i, j), r) => res.draw.circle(i -> j, 1, Color.red) }
+                  }
+              }
+
+        }
+
+/*        override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>
             src =>
               val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
@@ -96,7 +156,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                   }
               }
 
-        }
+        }*/
 
 /*
         def cornerResponse: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
