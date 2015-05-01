@@ -95,6 +95,14 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     with Frame9PositionsLayoutBuilder
     with FrameExec
   {
+    var LayoutDebug = true
+
+    def setDebugBorder[B <: AbstractDSLBuilder](color: Color)(b: B): B =
+      if(LayoutDebug) b.affect(_.border = Swing.LineBorder(color)).asInstanceOf[B]
+      else            b
+
+    def setDebugBorder(c: Component, color: Color): Unit = if(LayoutDebug) c.border = Swing.LineBorder(color)
+
     type Preview = SimplePreview
 
     val original: Preview = new SimplePreview{ def img = originalImage }
@@ -115,21 +123,23 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     protected val applyPanel: Panel
 
-    lazy val rTabs = tabs(_.Top, _.Scroll, configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem))
+    lazy val scrollableTabs = scrollable()(
+      tabs(_.Top, _.Scroll, configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
+      "scrollable-tabs"
+    ) |> setDebugBorder(Color.green)
 
     val layout: List[AbstractLayoutSetting] = split(_.Vertical)(
       panel.grid(2, 1)(original -> "image-original", modified -> "image-modified") -> "left-panel",
       panel.gridBag(
-        place(rTabs, "tabs")
-          .transform(_.addLayout(
-            _.anchor = Anchor.North,
-            _.weighty = 1,
-            _.fill = Fill.Horizontal
-          ))                          at theCenter,
+        place(scrollableTabs).transform(_.addLayout(_.anchor = Anchor.North,
+                                                    _.weighty = 1,
+                                                    _.weightx = 1,
+                                                    _.fill = Fill.Both
+                                                  ))                                  at theCenter,
         place(applyPanel, "apply")
         .transform(_.addLayout(
           _.weighty = 0
-          ))                          at theNorth
+          ))                                                                          at theNorth
       ) -> "right-panel"
     )
   }
@@ -168,8 +178,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     protected val originalMat = toMat(originalImage)
 
-//    protected def applyMat: Mat
-
     /** sets the affected image's color type */
     private var _imageColorType = BufferedImageColor.mode(originalImage)
     def imageColorType = _imageColorType
@@ -202,20 +210,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def create[Params, Src, R](exec: Src => Params => R): Runner[Params, Src, R] = new Runner(params => src => exec(src)(params))
     }
 
-//    case class RunnerExt[T, R](get: T => Runner[R]){
-//      def runner: T =>  = t => Runner(exec(t))
-//    }
-//    object RunnerExt{
-//      def apply[R](runner: Runner[R]): RunnerExt[T, R]
-//    }
-    
     case class TransformsFor[Src](get: Seq[Runner[_, Src, _]])
     
-//    def exec[R](panel: PanelExec[R])
-    
-    // tags todo used ??
-//    def underlyingTag(buffi: BufferedImage): ClassTag[_]
-//    def underlyingTag(mat: Mat): ClassTag[_]
 
     // Mat support
     def toMat(img: BufferedImage): Mat
@@ -342,27 +338,31 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
   trait ConfigurationsPanelBuilder{
     frame: GenericSimpleAppFrame with FrameExec =>
 
-    trait SimpleVerticalPanel extends GridBagPanel with GenericConfigurationPanel{
+    def setDebugBorder[B <: AbstractDSLBuilder](color: Color)(b: B): B
+    def setDebugBorder(c: Component, color: Color): Unit
+
+    trait SimpleVerticalPanel extends FlowPanel with GenericConfigurationPanel{
       pexec: MatPanelExec =>
+
+      setDebugBorder(this, Color.red)
 
       val elems: Seq[(String, Seq[Component with UpdateInterface])]
 
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
 
-      protected lazy val thePanel = panel.grid(elems.size, 1)(prepareElems: _*)
-//        .box(_.Vertical)(prepareElems: _*)
-//        .doNotGlue
+      contents += thePanel
 
-      layout += thePanel.component -> (new Constraints()  $$ { _.fill = GridBagPanel.Fill.Horizontal }
-                                                          $$ { _.weightx = 1 }
-                                                          $$ { _.weighty = 1 }
-                                                          $$ { _.anchor = GridBagPanel.Anchor.NorthEast }
-                                                          )
+      protected lazy val thePanel = panel
+        .box(_.Vertical)(prepareElems: _*)
+        .pipe(setDebugBorder(Color.magenta))
+        .component
 
       private def prepareElems = elems.map{ case (k, v) => mkSmallPanel(k)(v) -> k }.toSeq
 
       private def mkSmallPanel(id: String)(seq: Seq[Component with UpdateInterface]) =
-        panel.grid(seq.length, 1)(seq.zip(Range(0, seq.length)).map(p => p._1 -> (id + "-" + p._2)): _*)
+        panel
+          .box(_.Vertical)(seq.zip(Range(0, seq.length)).map(p => p._1 -> (id + "-" + p._2)): _*)
+          .pipe(setDebugBorder(Color.blue))
 
     }
 
@@ -370,8 +370,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     lazy val applyPanel = new FlowPanel with GenericConfigurationPanel{
       def updateForms() = {}
-
-//      override lazy val contents = applyButton :: Nil
 
       contents += applyButton
 
@@ -395,7 +393,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     private var _currentExec: PanelExec[_, _] =  configurations.head._2
 
-    componentAccess.get("tabs").get.asInstanceOf[TabbedPane] |> {
+    componentAccess.get("scrollable-tabs").get.asInstanceOf[ScrollPane].contents.head.asInstanceOf[TabbedPane] |> {
       tp =>
         frame.listenTo(tp.selection)
         frame.reactions += {
