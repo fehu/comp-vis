@@ -17,9 +17,13 @@ object CommonSettings {
   def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
     case (os, "amd64" | "x86_64") if os startsWith "linux"    => "linux-x64"
     case (os, "x86"   | "i386")   if os startsWith "linux"    => "linux-x86"
-    case (os, "amd64" | "x86_64") if os startsWith "windows"  => "win-64"
-    case (os, "x86"   | "i386")   if os startsWith "windows"  => "win-32"
-    case (os, "amd64" | "x86_64") if os startsWith "mac os x" => "osx-64"
+    case (os, "amd64" | "x86_64") if os startsWith "windows"  => "win-x64"
+    case (os, "x86"   | "i386")   if os startsWith "windows"  => "win-x86"
+    case (os, "amd64" | "x86_64") if os startsWith "mac os x" => "osx-x64"
     case _ =>  sys.error("unsupported os and arch")
   }
+
+  val supported = "linux-x64" :: "linux-x86" ::
+                  "win-x64"   :: "win-x86"   ::
+                  "osx-x64"   :: Nil
 }
