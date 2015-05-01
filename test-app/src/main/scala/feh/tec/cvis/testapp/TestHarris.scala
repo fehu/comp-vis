@@ -45,6 +45,9 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       protected var harrisResult  : List[((Int, Int), Double)] = Nil
       protected var harrisFiltered: List[((Int, Int), Double)] = Nil
 
+      protected var interestPointsCount: Int = 0
+      protected var filteredInterestPointsCount: Int = 0
+
       lazy val configurations: Seq[(String, Config)] = Seq(
         "harris" -> harrisPanel
       )
@@ -67,6 +70,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         lazy val applyThresholdButton = triggerFor{
           harrisFiltered = filterHarris(harrisResult).toList
+          filteredInterestPointsCount = harrisFiltered.length
           drawResult()
         }.button("Apply Threshold")
 
@@ -90,7 +94,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                                                  cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
                                                  .mapV { case Array(d) => d }
                                                  .lazyPairs
-//                                                 .filter(_._2 > threshold)
           )
           object DetTrace   extends ResponseFunc("det / trace",   withEigenValues(cornerResponseDetTrace))
           object DetTraceSq extends ResponseFunc("det / trace^2", withEigenValues(cornerResponseDetTraceSq))
@@ -103,7 +106,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
               .lazyPairs
               .mapVals(response)
-//              .filter(_._2 > threshold)
         }
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
@@ -116,20 +118,27 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
                   val responses = responseFunc.fromGray(grayImg)
                   harrisResult = responses.toList            // TODO !!! no side effects should be present here
+                  interestPointsCount = harrisResult.length
 
                   val filtered = filterHarris(harrisResult)
                   harrisFiltered = filtered.toList
+                  filteredInterestPointsCount = harrisFiltered.length
                 grayImg
               }
         }
 
         def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
 
+        lazy val showInterestPointsCount          = monitorFor(s"Interest points found: $interestPointsCount").text
+        lazy val showFilteredInterestPointsCount  = monitorFor(s"Filtered interest points: $filteredInterestPointsCount").text
+
         override def formBuilders: Seq[(String, (TestHarris.DSLFormBuilder[_], TestHarris.DSLLabelBuilder[_]))] =
           super.formBuilders ++ Seq(
-            "responseFunc"    -> (responseFuncControl   -> label("Response Function")),
-            "threshold"       -> (thresholdControl      -> label("Threshold")),
-            "applyThreshold"  -> (applyThresholdButton  -> label(""))
+            "responseFunc"                  -> (responseFuncControl -> label("Response Function")),
+            "threshold"                     -> (thresholdControl    -> label("Threshold")),
+            "applyThreshold"                -> (applyThresholdButton            -> label("")),
+            "interestPointsCount"           -> (showInterestPointsCount         -> label("")),
+            "filteredInterestPointsCount"   -> (showFilteredInterestPointsCount -> label(""))
           )
 
         def drawResult() = {
@@ -138,6 +147,19 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
           repaintImage()
         }
       }
+
+
+//      lazy val clusteringPanel()
+
+
+
+
+
+
+
+
+
+
 
 
       lazy val configurationsOld: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
