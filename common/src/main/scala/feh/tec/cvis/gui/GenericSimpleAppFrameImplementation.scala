@@ -7,6 +7,7 @@ import java.awt.{Transparency, Color, Dimension}
 import java.awt.image._
 import java.io.File
 import javax.imageio.ImageIO
+import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.common.describe.CallDescriptor.Callable
 import org.opencv.core.{CvType, Mat}
 import scala.reflect.ClassTag
@@ -153,6 +154,11 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     protected def applyMat: Mat
 
+    /** sets the affected image's color type */
+    private var _imageColorType = BufferedImageColor.mode(originalImage)
+    def imageColorType = _imageColorType
+
+    /** sets the affected image */
     private var _imageMat = originalMat
     protected def imageMat = _imageMat
     protected def setImageMat(mat: Mat) = {
@@ -322,9 +328,11 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
           frame.updateForms()
         }
         catch {
-          case thr: Throwable => Dialog.showMessage(message = thr.toString,
-                                                    title = "Error",
-                                                    messageType = Dialog.Message.Error)
+          case thr: Throwable =>
+            thr.printStackTrace()
+            Dialog.showMessage(message = thr.toString,
+                               title = "Error",
+                               messageType = Dialog.Message.Error)
         }
       }.button("Apply")
 

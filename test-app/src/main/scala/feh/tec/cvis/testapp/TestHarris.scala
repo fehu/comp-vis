@@ -10,7 +10,7 @@ import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.Harris
 import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
 import feh.util._
-import org.opencv.core.{Core, Mat}
+import org.opencv.core.{CvType, TermCriteria, Core, Mat}
 import scala.swing.Component
 import scala.swing.Swing._
 import Drawing._
@@ -31,6 +31,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       with CornerDetection
       with MatSupport
       with ColorConverting
+      with Clustering
     {
       frame =>
 
@@ -102,20 +103,39 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //            CallDescriptor.Callable()
 //        )
 
+        var nClusters = 50
+        var criteria = TerminationCriteria(_.Count, 1000, 1e-5)
+        var attempts = 100
+        var centersPolicy: CentersPolicy = CentersPolicy.Random
+
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>
             src =>
-              val cvt = ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray)
+              val cvt = ColorConversion(imageColorType, ColorMode.Gray)
               cvtColor(src, cvt) |> {
                 grayImg =>
 
                   val filtered = responseFunc.fromGray(grayImg)
                   println("filtered.length = " + filtered.length)
 
-                  grayImg.convert(cvt.inverse) $${
-                    res =>
-                      filtered.foreach{ case ((i, j), r) => res.draw.circle(j -> i, 1, Color.red) }
+                  val res = grayImg.convert(cvt.inverse)
+
+                  filtered.foreach{ case ((i, j), r) => res.draw.circle(j -> i, 1, Color.red) }
+
+                  if(filtered.nonEmpty){
+                    val cData = filtered.toMatOfPoint.convert(CvType.CV_32F).t()
+
+                    println("cData = " + cData)
+
+                    val KMeansResult(ccenters, bestLabels, compactness) = kmeans(cData, nClusters, criteria, attempts, centersPolicy)
+
+                    println("bestLabels = " + bestLabels)
+                    println("compactness = " + compactness)
+
+                    ccenters.map(_.swap).foreach(res.draw.circle(_, 50, Color.blue))
                   }
+
+                  res
               }
 
         }

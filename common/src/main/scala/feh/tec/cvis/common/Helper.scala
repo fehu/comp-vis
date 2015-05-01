@@ -1,11 +1,21 @@
 package feh.tec.cvis.common
 
-import org.opencv.core.Mat
-
+import org.opencv.core._
+import feh.util._
+import scala.math.Numeric.{FloatIsFractional, IntIsIntegral, DoubleIsFractional}
 import scala.reflect.ClassTag
+import scala.language.implicitConversions
 
 object Helper{
   type Array2D[T] = Array[Array[T]]
+
+  implicit def pairIsCvPoint[N](p: (N, N))(implicit num: Numeric[N]): Point = new Point(num.toDouble(p._1), num.toDouble(p._2))
+  implicit def pairIsCvSize[N] (p: (N, N))(implicit num: Numeric[N]): Size  = new Size (num.toDouble(p._1), num.toDouble(p._2))
+
+  implicit def numericArrayIsCvPoint[N](arr: Array[N])(implicit num: Numeric[N]): Point = new Point(arr.map(num.toDouble))
+  
+  implicit def cvPointIsDoublePair(p: Point): (Double, Double) = p.x      -> p.y
+  implicit def cvSizeIsDoublePair (s: Size):  (Double, Double) = s.width  -> s.height
 
   def withMat[R](f: Mat => R) = f(new Mat())
 
@@ -35,7 +45,16 @@ object Helper{
     def map[R: ClassTag](f: (Int, Int) => Array[Double] => R) = mapMat(mat, f)
     def mapV[R: ClassTag](f: Array[Double] => R) = mapMat(mat, (_, _) => f)
 
-    def toArray[R: ClassTag] = Helper.toArray(mat)
+    def byRow[R: ClassTag](f: Int => Mat => R): Stream[R] =
+      for{
+        i <- Stream from 0 take mat.rows()
+        row = mat.row(i)
+      } yield f(i)(row)
+
+    def toArray[R: ClassTag]: Array[R] = Helper.toArray(mat)
+
+    // C++: void Mat::convertTo(Mat& m, int rtype, double alpha = 1, double beta = 0)
+    def convert(rtype: Int, alpha: Double = 1, beta: Double = 0) = withMat(_ $$ (mat.convertTo(_, rtype, alpha, beta)))
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){
@@ -60,5 +79,25 @@ object Helper{
           (i, j) -> arr(i)(j)
       }
     )
+  }
+
+  implicit class LazyNumericPairsWrapper[N: Numeric](stream: Stream[((Int, Int), N)]){
+    lazy val num = implicitly[Numeric[N]]
+
+    def toMat(rows: Int, cols: Int): Mat = new Mat(rows, cols, cvTpe) $$ {
+      mat =>
+        stream.foreach {
+          case ((i, j), v) => mat.put(i, j, num.toDouble(v))
+        }
+    }
+    
+    def toMatOfPoint: MatOfPoint = new MatOfPoint(stream.map(_._1: Point): _*)
+
+    def cvTpe = num match {
+      case _: DoubleIsFractional  => CvType.CV_64F
+      case _: FloatIsFractional   => CvType.CV_32F
+      case _: IntIsIntegral       => CvType.CV_32S
+   // todo
+    }
   }
 }

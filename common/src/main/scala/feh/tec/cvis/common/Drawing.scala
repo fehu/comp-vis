@@ -9,10 +9,6 @@ import scala.language.implicitConversions
 object Drawing extends Drawing
 
 trait Drawing {
-
-  implicit def pairIsCvPoint[N](p: (N, N))(implicit num: Numeric[N]): Point = new Point(num.toDouble(p._1), num.toDouble(p._2))
-  implicit def pairIsCvSize[N] (p: (N, N))(implicit num: Numeric[N]): Size  = new Size (num.toDouble(p._1), num.toDouble(p._2))
-
   implicit def awtColorIsCvScalar(c: Color): Scalar = new Scalar(c.getRed, c.getGreen, c.getBlue)
 
 
