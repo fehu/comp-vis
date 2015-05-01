@@ -7,6 +7,7 @@ import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
 import feh.tec.cvis.common.describe.{Harris, ConvertColor, CallDescriptor}
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
+import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.tec.cvis.gui.configurations.Harris
 import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
 import feh.util._
@@ -37,9 +38,114 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
       protected def applyMat: Mat = originalMat
 
-      type Config = SimpleVerticalPanel with HarrisConfigurationPanelExec
+      type Config = SimpleVerticalPanel with MatPanelExec
 
-      lazy val configurations: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
+      protected var originalGray: Mat = null
+
+      protected var harrisResult  : List[((Int, Int), Double)] = Nil
+      protected var harrisFiltered: List[((Int, Int), Double)] = Nil
+
+      lazy val configurations: Seq[(String, Config)] = Seq(
+        "harris" -> harrisPanel
+      )
+
+
+      lazy val harrisPanel: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
+        def kStep = Some(GuiArgModifier.Step(0.001))
+
+        lazy val elems: Seq[(String, Seq[Component with UpdateInterface])] =
+          formBuilders.mapVals{
+                                case (form, label) => label.formMeta.form :: form.formMeta.form :: Nil
+                              }
+
+        def getSrc = originalMat
+        def setResult: Mat => Unit = _ => drawResult()
+
+        var threshold: Double = 0.1
+        lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
+                                    .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
+
+        lazy val applyThresholdButton = triggerFor{
+          harrisFiltered = filterHarris(harrisResult).toList
+          drawResult()
+        }.button("Apply Threshold")
+
+        var responseFunc: ResponseFunc = ResponseFunc.Original
+        lazy val responseFuncControl = controlForSeq(ResponseFunc.all,  static = true)
+                                       .dropDownList{
+                                                      rf =>
+                                                        responseFunc = rf
+                                                        componentAccess.get("k").get.visible = rf == ResponseFunc.Original
+                                                    }
+
+        case class ResponseFunc(name: String, fromGray: Mat => Stream[((Int, Int), Double)]){
+          override def toString = name
+        }
+
+        object ResponseFunc{
+          def all = Original :: DetTrace :: DetTraceSq :: Nil
+
+          object Original extends ResponseFunc("det - k*trace^2",
+                                               grayImg =>
+                                                 cornerHarris(grayImg, blockSize, kSize, k.toDouble, Option(borderType))
+                                                 .mapV { case Array(d) => d }
+                                                 .lazyPairs
+//                                                 .filter(_._2 > threshold)
+          )
+          object DetTrace   extends ResponseFunc("det / trace",   withEigenValues(cornerResponseDetTrace))
+          object DetTraceSq extends ResponseFunc("det / trace^2", withEigenValues(cornerResponseDetTraceSq))
+
+          def cornerResponseDetTrace:   EigenValsAndVecs => Double    =   eign => eign.det / eign.trace
+          def cornerResponseDetTraceSq: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
+
+          def withEigenValues(response: EigenValsAndVecs => Double) =
+            (grayImg: Mat) =>
+              cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
+              .lazyPairs
+              .mapVals(response)
+//              .filter(_._2 > threshold)
+        }
+
+        override lazy val runner: Runner[Params, Mat, Mat] = Runner {
+          params =>
+            src =>
+              val cvt = ColorConversion(imageColorType, ColorMode.Gray)
+              cvtColor(src, cvt) |> {
+                grayImg =>
+                  originalGray = grayImg.convert(cvt.inverse)
+
+                  val responses = responseFunc.fromGray(grayImg)
+                  harrisResult = responses.toList            // TODO !!! no side effects should be present here
+
+                  val filtered = filterHarris(harrisResult)
+                  harrisFiltered = filtered.toList
+                grayImg
+              }
+        }
+
+        def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
+
+        override def formBuilders: Seq[(String, (TestHarris.DSLFormBuilder[_], TestHarris.DSLLabelBuilder[_]))] =
+          super.formBuilders ++ Seq(
+            "responseFunc"    -> (responseFuncControl   -> label("Response Function")),
+            "threshold"       -> (thresholdControl      -> label("Threshold")),
+            "applyThreshold"  -> (applyThresholdButton  -> label(""))
+          )
+
+        def drawResult() = {
+          Option(originalGray) map (_.clone()) foreach setImageMat
+          affectImageMat(img => harrisFiltered.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
+          repaintImage()
+        }
+      }
+
+
+      lazy val configurationsOld: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
+        def getSrc: Mat = ???
+        def setResult: (Mat) => Unit = ???
+
+
+
         var threshold: Double = 0.1
 
         lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)

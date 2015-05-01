@@ -11,11 +11,12 @@ import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.common.describe.CallDescriptor.Callable
 import org.opencv.core.{CvType, Mat}
 import scala.reflect.ClassTag
+import scala.swing.GridBagPanel.{Fill, Anchor}
 import scala.swing._
 import feh.util._
 import feh.util.file._
 import FileDrop._
-import scala.swing.event.{Key, MouseClicked}
+import scala.swing.event.{SelectionChanged, Key, MouseClicked}
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -112,9 +113,24 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
     def stop(): Unit = unregAFrame(this)
 
+    protected val applyPanel: Panel
+
+    lazy val rTabs = tabs(_.Top, _.Scroll, configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem))
+
     val layout: List[AbstractLayoutSetting] = split(_.Vertical)(
       panel.grid(2, 1)(original -> "image-original", modified -> "image-modified") -> "left-panel",
-      (configurations $$ {_.minimumSize = 200 -> 200}) -> "configurations"
+      panel.gridBag(
+        place(rTabs, "tabs")
+          .transform(_.addLayout(
+            _.anchor = Anchor.North,
+            _.weighty = 1,
+            _.fill = Fill.Horizontal
+          ))                          at theCenter,
+        place(applyPanel, "apply")
+        .transform(_.addLayout(
+          _.weighty = 0
+          ))                          at theNorth
+      ) -> "right-panel"
     )
   }
 
@@ -152,7 +168,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     protected val originalMat = toMat(originalImage)
 
-    protected def applyMat: Mat
+//    protected def applyMat: Mat
 
     /** sets the affected image's color type */
     private var _imageColorType = BufferedImageColor.mode(originalImage)
@@ -160,14 +176,21 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     /** sets the affected image */
     private var _imageMat = originalMat
+    
     protected def imageMat = _imageMat
+    protected def affectImageMat(f: Mat => Unit) = {
+      f(imageMat)
+      _modifiedImage = toBufferImage(imageMat)
+    }
+    
     protected def setImageMat(mat: Mat) = {
       _imageMat = mat
-      _modifiedImage = toBufferImage(imageMat)
+      updateModifiedImage()
     }
 
     private var _modifiedImage = toBufferImage(imageMat)
     def modifiedImage = _modifiedImage
+    def updateModifiedImage() = _modifiedImage = toBufferImage(imageMat)
 
     case class Runner[Params, Src, R](exec: Params => Src => R)
     object Runner{
@@ -206,6 +229,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       def classTag: ClassTag[R]
       def runner: Runner[Params, Src, R]
+
+      def getSrc: Src
+      def setResult: R => Unit
       
       def exec(): R
     }
@@ -218,15 +244,15 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       protected def getParams(): Params
       
-      def exec(): Mat = runner.exec(getParams())(frame.applyMat)
+      def exec(): Mat = runner.exec(getParams())(getSrc)
     }
 
 
-    def matPanelExec(mp: MatPanelExec) = {
-      val mat = mp.exec()
-      frame.setImageMat(mat)
-      frame.modified.repaint()
+    def panelExec[R](mp: PanelExec[_, R]) {
+      mp.setResult(mp.exec())
     }
+    
+    def repaintImage() = frame.modified.repaint()
   }
 
   trait MatSupport extends FrameExec {
@@ -321,27 +347,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       val elems: Seq[(String, Seq[Component with UpdateInterface])]
 
-      lazy val applyButton = triggerFor{
-//        exec()
-        try {
-          matPanelExec(pexec)
-          frame.updateForms()
-        }
-        catch {
-          case thr: Throwable =>
-            thr.printStackTrace()
-            Dialog.showMessage(message = thr.toString,
-                               title = "Error",
-                               messageType = Dialog.Message.Error)
-        }
-      }.button("Apply")
-
       def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
 
-      protected lazy val thePanel = panel.grid(2, 1)(
-        panel.grid(elems.size, 1)(prepareElems: _*) -> noId,
-        applyButton -> "apply"
-      )
+      protected lazy val thePanel = panel.grid(elems.size, 1)(prepareElems: _*)
 //        .box(_.Vertical)(prepareElems: _*)
 //        .doNotGlue
 
@@ -355,8 +363,48 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       private def mkSmallPanel(id: String)(seq: Seq[Component with UpdateInterface]) =
         panel.grid(seq.length, 1)(seq.zip(Range(0, seq.length)).map(p => p._1 -> (id + "-" + p._2)): _*)
-//          .affect(_.border = Swing.LineBorder(Color.red))
 
+    }
+
+    def currentExec = _currentExec
+
+    lazy val applyPanel = new FlowPanel with GenericConfigurationPanel{
+      def updateForms() = {}
+
+//      override lazy val contents = applyButton :: Nil
+
+      contents += applyButton
+
+      lazy val applyButton = triggerFor{
+         try {
+           panelExec(currentExec)
+//           repaintImage()   // should be called for each panel separately
+           frame.updateForms()
+         }
+         catch {
+           case thr: Throwable =>
+             thr.printStackTrace()
+             Dialog.showMessage(message = thr.toString,
+                                title = "Error",
+                                messageType = Dialog.Message.Error)
+         }
+       }.button("Apply")
+        .component
+    }
+
+
+    private var _currentExec: PanelExec[_, _] =  configurations.head._2
+
+    componentAccess.get("tabs").get.asInstanceOf[TabbedPane] |> {
+      tp =>
+        frame.listenTo(tp.selection)
+        frame.reactions += {
+          case SelectionChanged(`tp`) =>
+            println("SelectionChanged")
+//            val name = tp.selection.page.title
+//            _currentExec = configurations.find(_._1 == name).get._2
+//            ??? // todo
+        }
     }
 
   }

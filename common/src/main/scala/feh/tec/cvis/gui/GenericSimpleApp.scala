@@ -33,7 +33,7 @@ trait GenericSimpleApp extends App with AbstractGUI with GenericConfigurationGUI
     
     val original: Preview
     val modified: Preview
-    val configurations: Config
+    val configurations: Seq[(String, Config)]
     
 
     protected def filesAdded(files: List[File])
