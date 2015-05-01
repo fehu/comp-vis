@@ -103,10 +103,15 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //            CallDescriptor.Callable()
 //        )
 
-        var nClusters = 50
+//        var initialNClusters = 250
+        var nClustersStep = 10
+        var nClustersMaxTries = 100
+
         var criteria = TerminationCriteria(_.Count, 1000, 1e-5)
         var attempts = 100
-        var centersPolicy: CentersPolicy = CentersPolicy.Random
+        var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
+
+        var maxCompactness = 1e4
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>
@@ -122,21 +127,43 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
                   filtered.foreach{ case ((i, j), r) => res.draw.circle(j -> i, 1, Color.red) }
 
-                  if(filtered.nonEmpty){
+                  lazy val initialNClusters = filtered.length / 20
+
+                  if(filtered.length >= initialNClusters){
                     val cData = filtered.toMatOfPoint.convert(CvType.CV_32F).t()
 
-                    println("cData = " + cData)
+                    val best = new Mat()
+                    def centersPolicy = if(best.empty()) centersInitialPolicy
+                                        else CentersPolicy.InitialLabels
+                    def kMeans(nClusters: Int) = {
+                      println("kMeans")
+                      kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
+                    }
 
-                    val KMeansResult(ccenters, bestLabels, compactness) = kmeans(cData, nClusters, criteria, attempts, centersPolicy)
+                    val KMeansResult(ccenters, bestLabels, compactness) = {
+                      println("search KMeansResult")
+                      doUntil(initialNClusters, nClustersMaxTries)(
+                        nClust =>
+                          kMeans(nClust) |> {
+                            res =>
+                              println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
+
+                              if(res.compactness <= maxCompactness) scala.Right(res)
+                              else                                  scala.Left(nClust+nClustersStep)
+                          }).right
+                      .getOrElse(sys.error(s"coulndn't find clusters with max compactness $maxCompactness in $nClustersMaxTries tries"))
+                    }
 
                     println("bestLabels = " + bestLabels)
                     println("compactness = " + compactness)
 
-                    ccenters.map(_.swap).foreach(res.draw.circle(_, 50, Color.blue))
+                    ccenters.map(_.swap).foreach(res.draw.circle(_, 5, Color.blue))
                   }
 
                   res
               }
+
+
 
         }
 
@@ -144,4 +171,16 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
       frame.updateForms()
     }
+
+  def doUntil[T, R](initial: T, maxTry: Int = 100)(f: T => Either[T, R]): Either[T, R] =
+    Y[(T, Int), Either[T, R]](
+      rec => {
+        case (prev, c) =>
+          f(prev) match {
+            case Left(t) => if (c == maxTry)  Left(t)
+                            else              rec(t -> (c+1))
+            case right   => right
+          }
+      }
+    )(initial -> 0)
 }

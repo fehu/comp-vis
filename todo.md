@@ -1,5 +1,10 @@
 ### TODO
 
-- [ ] choose between apply for every panel or a global one
-- [ ] image transformations chaining, including not Mat steps, for example: Mat -> (Mat, A) -> B -> C -> Mat
-- [ ] color conversions
+- [x] color conversions
+- [ ] new panel for clustering
+- [ ] independent execution (of) 
+- [ ] --- Harris
+- [ ] --- interest points filtering
+- [ ] --- clustering with visible intermediate result
+- [ ] max interest point cap
+

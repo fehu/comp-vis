@@ -74,9 +74,14 @@ trait Clustering {
    *
    * @see <a href="http://docs.opencv.org/modules/core/doc/clustering.html#kmeans">org.opencv.core.Core.kmeans</a>
    */
-  def kmeans(data: Mat, k: Int, criteria: TerminationCriteria, attempts: Int, centersPolicy: CentersPolicy): KMeansResult = {
+  def kmeans(data: Mat, 
+             k: Int,
+             criteria: TerminationCriteria,
+             attempts: Int,
+             centersPolicy: CentersPolicy,
+             labels: Mat = null): KMeansResult = {
     val centers = new Mat() //  Output matrix of the cluster centers, one row per each cluster center.
-    val bestLabels = new Mat()
+    val bestLabels = Option(labels).getOrElse(new Mat())
 
     val compactness = Core.kmeans(data, k, bestLabels, criteria, attempts, centersPolicy.value, centers)
     val stream = centers.byRow(row => _.toArray[Float]: Point )
