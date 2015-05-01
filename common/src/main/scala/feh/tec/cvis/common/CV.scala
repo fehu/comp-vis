@@ -15,9 +15,8 @@ object CV {
 
   def extractLib(): File = {
     val (path, suff) = systemDependant
-    val lib = ClassLoader.getSystemResourceAsStream("opencv" / path / cvLib + suff)
-              .ensuring(_ != null, "no lib found in resources")
-    val tmp = File.temporaryDir("opencv").createFile(s"$cvLib." + suff).get
+    val lib = ClassLoader.getSystemResourceAsStream(s"opencv/$path/$cvLib.$suff").ensuring(_ != null, "no lib found in resources")
+    val tmp = File.temporary(s"$cvLib.$suff")
     tmp.withOutputStream(File.write(lib)).get
     tmp
   }
