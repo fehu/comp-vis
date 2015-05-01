@@ -15,9 +15,11 @@ object CommonSettings {
                                             + Seq("libs", "opencv", systemDependantPath).mkString(File.separator))
 
   def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
-    case (os, "amd64")          if os startsWith "linux"   => "linux-x64"
-    case (os, "x86" | "i386")   if os startsWith "linux"   => "linux-x86"
-    case (os, "amd64")          if os startsWith "windows" => "win-64"
-    case (os, "x86" | "i386")   if os startsWith "windows" => "win-32"
+    case (os, "amd64" | "x86_64") if os startsWith "linux"    => "linux-x64"
+    case (os, "x86"   | "i386")   if os startsWith "linux"    => "linux-x86"
+    case (os, "amd64" | "x86_64") if os startsWith "windows"  => "win-64"
+    case (os, "x86"   | "i386")   if os startsWith "windows"  => "win-32"
+    case (os, "amd64" | "x86_64") if os startsWith "mac os x" => "osx-64"
+    case _ =>  sys.error("unsupported os and arch")
   }
 }

@@ -22,9 +22,10 @@ object CV {
   }
 
   def systemDependant = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
-    case (os, "amd64")          if os startsWith "linux"   => "linux-x64" -> "so"
-    case (os, "x86" | "i386")   if os startsWith "linux"   => "linux-x86" -> "so"
-    case (os, "amd64")          if os startsWith "windows" => "win-64" -> "dll"
-    case (os, "x86" | "i386")   if os startsWith "windows" => "win-32" -> "dll"
+    case (os, "amd64" | "x86_64") if os startsWith "linux"    => "linux-x64"  -> "so"
+    case (os, "x86"   | "i386")   if os startsWith "linux"    => "linux-x86"  -> "so"
+    case (os, "amd64" | "x86_64") if os startsWith "windows"  => "win-64"     -> "dll"
+    case (os, "x86"   | "i386")   if os startsWith "windows"  => "win-32"     -> "dll"
+    case (os, "amd64" | "x86_64") if os startsWith "mac os x" => "osx-64"     -> "dylib"
   }
 }
