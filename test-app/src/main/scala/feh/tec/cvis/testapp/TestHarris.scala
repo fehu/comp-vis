@@ -5,7 +5,8 @@ import java.awt.image._
 import javax.swing.SpinnerNumberModel
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
-import feh.tec.cvis.common.describe.{Harris, ConvertColor, CallDescriptor}
+import feh.tec.cvis.common.describe.ArgModifier.MinCap
+import feh.tec.cvis.common.describe.{ArgDescriptor, Harris, ConvertColor, CallDescriptor}
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.tec.cvis.gui.configurations.Harris
@@ -49,11 +50,11 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       protected var filteredInterestPointsCount: Int = 0
 
       lazy val configurations: Seq[(String, Config)] = Seq(
-        "harris" -> harrisPanel
+        "harris" -> HarrisPanel
       )
 
 
-      lazy val harrisPanel: Config = new SimpleVerticalPanel with HarrisConfigurationPanelExec{
+      object HarrisPanel extends SimpleVerticalPanel with HarrisConfigurationPanelExec{
         def kStep = Some(GuiArgModifier.Step(0.001))
 
         lazy val elems: Seq[(String, Seq[Component with UpdateInterface])] =
@@ -126,6 +127,14 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                 grayImg
               }
         }
+//        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
+//          params =>
+//            CallDescriptor.WithScopeAndParams(ConvertColor.Descriptor, frame,
+//                                              (ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None)) chain
+//            CallDescriptor.WithScopeAndParams(Harris.Descriptor, frame,
+//                                              (blockSize, kSize, k.toDouble, Option(borderType))) chain
+//            CallDescriptor.Callable()
+//        )
 
         def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
 
@@ -148,8 +157,49 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         }
       }
 
+//      List[((Int, Int), Double)]
 
-//      lazy val clusteringPanel()
+      object ClusteringPanel extends SimpleVerticalPanel with PanelExec[List[((Int, Int), Double)], KMeansResult]{
+
+        // get / set
+
+        final type Params = Unit
+        final def getParams() = ()
+
+        final def classTag = scala.reflect.classTag[KMeansResult]
+
+        def setResult: (KMeansResult) => Unit = ???
+        def getSrc = harrisFiltered
+
+
+        // configurable vars
+
+        var initialNClusters = 250
+        var nClustersStep = 10
+        var nClustersMaxTries = 100
+
+        var criteria = TerminationCriteria(_.Count, 1000, 1e-5)
+        var attempts = 100
+        var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
+
+        var maxCompactness = 1e4
+
+
+        object InitialNClusters extends ArgDescriptor[Int]("initial clusters count", null, MinCap(1))
+
+        // configurable vars controls
+
+
+
+
+
+        lazy val elems: Seq[(String, Seq[Component with TestHarris.UpdateInterface])] = ???
+
+        // running
+
+        lazy val runner: Runner[Unit, List[((Int, Int), Double)], KMeansResult] = ???
+
+      }
 
 
 
@@ -201,7 +251,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
           def cornerResponseDetTrace:   EigenValsAndVecs => Double    =   eign => eign.det / eign.trace
           def cornerResponseDetTraceSq: EigenValsAndVecs => Double    =   eign => eign.det / math.pow(eign.trace, 2)
 
-          def withEigenValues(response: EigenValsAndVecs => Double) = 
+          def withEigenValues(response: EigenValsAndVecs => Double) =
             (grayImg: Mat) =>
               cornerEigenValsAndVecs(grayImg, blockSize, kSize, Option(borderType))
                 .lazyPairs
@@ -222,16 +272,18 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         def kStep = Some(GuiArgModifier.Step(0.001))
 
-//        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
-//          params =>
-//            CallDescriptor.WithScopeAndParams(ConvertColor.Descriptor, frame,
-//                                              (ColorConversion(BufferedImageColor.mode(modifiedImage), ColorMode.Gray), None)) chain
-//            CallDescriptor.WithScopeAndParams(Harris.Descriptor, frame,
-//                                              (blockSize, kSize, k.toDouble, Option(borderType))) chain
-//            CallDescriptor.Callable()
-//        )
 
-//        var initialNClusters = 250
+
+
+
+
+
+
+
+
+
+
+        var initialNClusters = 250
         var nClustersStep = 10
         var nClustersMaxTries = 100
 
@@ -240,6 +292,11 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
 
         var maxCompactness = 1e4
+        
+        
+        
+        
+        
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>

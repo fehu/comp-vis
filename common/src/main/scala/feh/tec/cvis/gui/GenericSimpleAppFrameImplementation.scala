@@ -226,21 +226,17 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def classTag: ClassTag[R]
       def runner: Runner[Params, Src, R]
 
+      def getParams(): Params
       def getSrc: Src
       def setResult: R => Unit
-      
-      def exec(): R
+
+      def exec(): R = runner.exec(getParams())(getSrc)
     }
 
     trait MatPanelExec extends PanelExec[Mat, Mat]{
       conf: GenericConfigurationPanel =>
 
-
       def classTag =  scala.reflect.classTag[Mat]
-
-      protected def getParams(): Params
-      
-      def exec(): Mat = runner.exec(getParams())(getSrc)
     }
 
 
@@ -342,7 +338,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     def setDebugBorder(c: Component, color: Color): Unit
 
     trait SimpleVerticalPanel extends FlowPanel with GenericConfigurationPanel{
-      pexec: MatPanelExec =>
+      pexec: PanelExec[_, _] =>
 
       setDebugBorder(this, Color.red)
 

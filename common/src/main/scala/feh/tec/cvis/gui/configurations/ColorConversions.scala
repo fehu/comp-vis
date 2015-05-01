@@ -26,7 +26,7 @@ trait ColorConversions extends GenericConfigurationGUI with ColorConverting{
       def convertCode: ColorConversion = ColorConversion(convertFrom, convertTo)
       def channelsNumber: Option[Int]  = None
 
-      protected def getParams(): Params = (convertCode, channelsNumber)
+      def getParams(): Params = (convertCode, channelsNumber)
 
       def runner: Runner[Params, Mat, Mat] = Runner.create(ConvertColor.Descriptor.call(gui))
 
