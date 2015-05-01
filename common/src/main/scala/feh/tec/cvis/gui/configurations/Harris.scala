@@ -1,18 +1,13 @@
 package feh.tec.cvis.gui.configurations
 
-import java.awt.Color
-
 import feh.dsl.swing.AbstractGUI
-import feh.tec.cvis.common.describe.ArgModifier.{MinCap, MaxCap}
-import feh.tec.cvis.common.{describe, BorderExtrapolationMethod, CornerDetection}
-import feh.tec.cvis.common.describe.{Harris, ArgModifier, ArgDescriptor}
-import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
+import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier, Harris}
+import feh.tec.cvis.common.{BorderExtrapolationMethod, CornerDetection}
+import feh.tec.cvis.gui.{GenericConfigurationGUI, GenericSimpleAppFrameImplementation}
 import feh.util._
 import org.opencv.core.Mat
-
-import scala.collection.immutable.NumericRange
 import scala.reflect.ClassTag
-import scala.swing.{Swing, Alignment}
+import scala.swing.Alignment
 
 trait Harris extends GenericConfigurationGUI with CornerDetection{
   gui: AbstractGUI with GenericSimpleAppFrameImplementation =>
@@ -81,18 +76,14 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
                                   case num: Fractional[N] => num.div(max.get - min.get, num.fromInt(100))
                                 }
                               }
-        lazy val domain = Stream.iterate(min.get)(_ + step).takeWhile(_ <= max.get).toList //.map(ns*).map(math.round).map(_.toFloat/ns)
-//          Stream.iterate(min.get)(num.plus(_, step)).takeWhile(num.lteq(_, max.get)).toSeq
+        lazy val domain = Stream.iterate(min.get)(_ + step).takeWhile(_ <= max.get).toList
 
         lazy val pos  = caps exists { case _: ArgModifier.Positive[_] => true   ; case _ => false }
         lazy val nneg = caps.exists{ case _: ArgModifier.NonNegative[_] => true ; case _ => false }
 
-//        println(s"control for $descr")
-//        println(s"\tcaps = $caps, max = $max. min = $min, positive = $pos, not-negative = $nneg")
 
         val control =
           if(caps.size == 2) controlGivenDomain(get)(set).slider(domain, _.Left)
-//            controlForNumeric(get)(set).slider(min.get, max.get, step, _.Left)
           else controlForNumeric(get)(set).spinner() |> {
             cntr =>
               max map cntr.maxValue getOrElse cntr |> {
@@ -129,26 +120,6 @@ trait Harris extends GenericConfigurationGUI with CornerDetection{
         .label
         .affect( _.horizontalAlignment = Alignment.Left)
 
-//    protected def mkControlLabel(descr: ArgDescriptor[_]) =
-//      monitorFor(
-//        s"""<html>
-//           |  <span style='font-size:8px'>
-//           |    <b>${descr.name}</b> - ${descr.description}
-//           |  </span>
-//           |</html>""".stripMargin
-//      ).label
-//        .affect( _.horizontalAlignment = Alignment.Left,
-//                 .affect( _.horizontalAlignment = Alignment.Left,
-//        )
-
-
   }
-
-
-//  abstract class VerticalConfigurationPanel(val updateImage: Array[Array[Byte]] => Unit)
-//    extends GenericConfigurationPanel with ConfigurationPanelElements
-//  {
-//    lazy val configPanel = panel
-//  }
 
 }
