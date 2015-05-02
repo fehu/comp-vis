@@ -144,7 +144,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                                                   ))                                  at theCenter,
         place(UpperPanel, "apply")
         .transform(_.addLayout(
-          _.weighty = 0
+          _.weighty = 0,
+          _.fill = Fill.Horizontal
           ))                                                                          at theNorth
       ) -> "right-panel"
     )
@@ -387,7 +388,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def currentExec = _currentConfig
 
-    object UpperPanel extends BoxPanel(Orientation.Vertical) with GenericConfigurationPanel with UpdateInterface{
+    object UpperPanel extends GridPanel(2, 1) with GenericConfigurationPanel with UpdateInterface{
       def updateForms() = {}
       def updateForm()  = {}
 
@@ -403,11 +404,12 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       override def unlockForm(): Unit = {
         applyButton.text = "Apply"
         progressBar.variable.set(0)
+        progressBar.component.label = null
         progressBar.component.lock()
         locked = false
       }
 
-      contents += applyButton += progressBar.component
+      contents += progressBar.component += applyButton
 
       def applyAction() = {
         lockForm()
@@ -444,7 +446,12 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       }.button("Apply").formMeta.form
 
 
-      lazy val progressBar = Monitor(_currentProgress, new ProgressBar)
+      lazy val progressBar = Monitor(_currentProgress, new ProgressBar $$ (_.labelPainted = true))
+
+      def updateProgress(msg: String) = {
+        progressBar.variable.affect(_ + 1)
+        progressBar.component.label = msg
+      }
     }
 
 

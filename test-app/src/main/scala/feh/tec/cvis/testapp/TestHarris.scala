@@ -278,8 +278,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                   res =>
                     println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
 
-                    UpperPanel.progressBar.variable.affect(_ + 1)
-                    UpperPanel.progressBar.component.label = s"$nClust clusters: compactness = ${res.compactness} "
+                    UpperPanel updateProgress s"$nClust clusters: compactness = ${res.compactness}"
 
                     if(res.compactness <= targetCompactness)  scala.Right(res)
                     else                                      scala.Left(nClust+nClustersStep)
