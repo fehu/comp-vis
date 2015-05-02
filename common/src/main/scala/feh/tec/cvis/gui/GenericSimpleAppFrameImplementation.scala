@@ -204,8 +204,18 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     def modifiedImage = _modifiedImage
     def updateModifiedImage() = _modifiedImage = toBufferImage(imageMat)
 
-    case class AtomicRunner[Params, Src, R](exec: Params => Src => R)
     case class Runner[Params, Src, R](exec: Runner.OnEachStep => Params => Src => R)
+    case class AtomicRunner[Params, Src, R](exec: Params => Src => R)
+    case class RecursiveRunner[T, Params, Src, R](exec: Params => Src => T => Either[T, R]){
+      def runner(initial: T, maxTries: Int, err: String) = Runner[Params, Src, R] {
+        nextStep => params => src =>
+          val ex = exec(params)(src)
+          doUntil(initial, maxTries) { t => nextStep(); ex(t) }
+          .right
+          .getOrElse(sys.error(err))
+      }
+
+    }
 
     object Runner{
       implicit def atomicRunnerIsRunner[Params, Src, R](a: AtomicRunner[Params, Src, R]): Runner[Params, Src, R] = Runner(_ => a.exec)

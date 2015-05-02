@@ -255,6 +255,41 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         // running
 
+        lazy val runner = RecursiveRunner[Int, Unit, List[((Int, Int), Double)], KMeansResult]{
+          _ => iPoints =>
+            if(iPoints.length >= initialNClusters){
+              val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
+
+              val best = new Mat()
+              println("new best")
+              def centersPolicy = if(best.empty()) centersInitialPolicy
+              else CentersPolicy.InitialLabels
+              def kMeans(nClusters: Int) = {
+                println("kMeans")
+                kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
+              }
+
+              nClust =>
+                kMeans(nClust) |> {
+                  res =>
+                    println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
+
+                    if(res.compactness <= targetCompactness)  scala.Right(res)
+                    else                                      scala.Left(nClust+nClustersStep)
+                }
+            }
+            else {
+              Dialog.showMessage(parent = frame,
+                                 message = "Number of clusters shouldn't be greater than number of points",
+                                 title = "Warning",
+                                 messageType = Dialog.Message.Warning)
+              nClust => scala.Right(KMeansResult.empty)
+            }
+        }.runner( initial = initialNClusters
+                , maxTries = nClustersMaxTries
+                , err = s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries")
+
+/*
         lazy val runner = Runner[Unit, List[((Int, Int), Double)], KMeansResult](
           nextStep => _ => iPoints =>
             if(iPoints.length >= initialNClusters){
@@ -267,7 +302,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                 println("kMeans")
                 kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
               }
-
 
               doUntil(initialNClusters, nClustersMaxTries){
                 nClust =>
@@ -289,6 +323,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               KMeansResult.empty
             }
         )
+*/
 
         protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
@@ -305,15 +340,4 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       frame.updateForms()
     }
 
-  def doUntil[T, R](initial: T, maxTry: Int = 100)(f: T => Either[T, R]): Either[T, R] =
-    Y[(T, Int), Either[T, R]](
-      rec => {
-        case (prev, c) =>
-          f(prev) match {
-            case Left(t) => if (c == maxTry)  Left(t)
-                            else              rec(t -> (c+1))
-            case right   => right
-          }
-      }
-    )(initial -> 0)
 }
