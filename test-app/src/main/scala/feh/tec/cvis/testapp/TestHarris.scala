@@ -188,7 +188,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         // configurable vars
 
-        var nClustersStep = 1
+        var nClustersStep = 10
         var nClustersMaxTries = 100
         
         def tpe: TerminationCriteria.Type = TerminationCriteria.Type.Both // todo both for now
