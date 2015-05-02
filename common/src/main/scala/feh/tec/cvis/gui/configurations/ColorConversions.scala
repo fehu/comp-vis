@@ -28,7 +28,7 @@ trait ColorConversions extends GenericConfigurationGUI with ColorConverting{
 
       def getParams(): Params = (convertCode, channelsNumber)
 
-      def runner: Runner[Params, Mat, Mat] = Runner.create(ConvertColor.Descriptor.call(gui))
+      def runner: Runner[Params, Mat, Mat] = Runner.atomic(ConvertColor.Descriptor.call(gui))
 
       def updateForms(): Unit = ???
     }

@@ -9,7 +9,6 @@ import javax.imageio.ImageIO
 import javax.swing.filechooser.FileNameExtensionFilter
 
 import feh.tec.cvis.common.BufferedImageColor
-import feh.tec.cvis.common.describe.CallDescriptor.Callable
 import feh.tec.cvis.gui.FileDrop._
 import feh.util._
 import feh.util.file._
@@ -205,14 +204,15 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     def modifiedImage = _modifiedImage
     def updateModifiedImage() = _modifiedImage = toBufferImage(imageMat)
 
-    case class Runner[Params, Src, R](exec: Params => Src => R)
+    case class AtomicRunner[Params, Src, R](exec: Params => Src => R)
+    case class Runner[Params, Src, R](exec: Runner.OnEachStep => Params => Src => R)
+
     object Runner{
-      def callable[Params, Src, R](f: Params => Callable[Src, R]): Runner[Params, Src, R] = Runner(
-        params =>
-          src =>
-            f(params).call(src)
-      )
-      def create[Params, Src, R](exec: Src => Params => R): Runner[Params, Src, R] = new Runner(params => src => exec(src)(params))
+      implicit def atomicRunnerIsRunner[Params, Src, R](a: AtomicRunner[Params, Src, R]): Runner[Params, Src, R] = Runner(_ => a.exec)
+
+      type OnEachStep = () => Unit
+      
+      def atomic[Params, Src, R](exec: Src => Params => R): AtomicRunner[Params, Src, R] = new AtomicRunner(params => src => exec(src)(params))
     }
 
     case class TransformsFor[Src](get: Seq[Runner[_, Src, _]])
@@ -235,7 +235,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def getSrc: Src
       def setResult: R => Unit
 
-      def exec(): R = runner.exec(getParams())(getSrc)
+      def exec(): R = runner.exec(throwIfInterrupted)(getParams())(getSrc)
+
+      protected def throwIfInterrupted()
     }
 
     trait MatPanelExec extends PanelExec[Mat, Mat]{

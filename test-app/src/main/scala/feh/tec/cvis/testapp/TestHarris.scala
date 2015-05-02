@@ -121,20 +121,22 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         }
 
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
-          params =>
-            src =>
-              val cvt = ColorConversion(imageColorType, ColorMode.Gray)
-              cvtColor(src, cvt) |> {
-                grayImg =>
-                  originalGray = grayImg.convert(cvt.inverse)
-
-                  val responses = responseFunc.fromGray(grayImg)
-                  harrisResult = responses.toList            // TODO !!! no side effects should be present here
-
-                  setHarrisFiltered( filterHarris(harrisResult) )
-                grayImg
-              }
+          nextStep =>
+            params =>
+              src =>
+                val cvt = ColorConversion(imageColorType, ColorMode.Gray)
+                cvtColor(src, cvt) |> {
+                  grayImg =>
+                    originalGray = grayImg.convert(cvt.inverse)
+                    nextStep()
+                    val responses = responseFunc.fromGray(grayImg)
+                    harrisResult = responses.toList            // TODO !!! no side effects should be present here
+                    nextStep()
+                    setHarrisFiltered( filterHarris(harrisResult) )
+                  grayImg
+                }
         }
+
 //        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
 //          params =>
 //            CallDescriptor.WithScopeAndParams(ConvertColor.Descriptor, frame,
@@ -143,6 +145,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 //                                              (blockSize, kSize, k.toDouble, Option(borderType))) chain
 //            CallDescriptor.Callable()
 //        )
+
+        protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
         def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
 
@@ -252,7 +256,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         // running
 
         lazy val runner = Runner[Unit, List[((Int, Int), Double)], KMeansResult](
-          _ => iPoints =>
+          nextStep => _ => iPoints =>
             if(iPoints.length >= initialNClusters){
               val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
 
@@ -265,16 +269,16 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               }
 
 
-              doUntil(initialNClusters, nClustersMaxTries)(
+              doUntil(initialNClusters, nClustersMaxTries){
                 nClust =>
-                  if(interrupted_?) throw Interrupted
-                  else kMeans(nClust) |> {
+                  nextStep()
+                  kMeans(nClust) |> {
                     res =>
                       println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
 
                       if(res.compactness <= targetCompactness) scala.Right(res)
                       else                                  scala.Left(nClust+nClustersStep)
-                  }).right
+                  }}.right
               .getOrElse(sys.error(s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries"))
             }
           else {
@@ -285,6 +289,9 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               KMeansResult.empty
             }
         )
+
+        protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
+
 
         // draw
 

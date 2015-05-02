@@ -39,7 +39,7 @@ trait Harris extends GenericConfigurationGUI with CornerDetection with ConfigBui
 
       def getParams(): Params = (blockSize, kSize, k, Option(borderType))
 
-      lazy val runner: Runner[Params, Mat, Mat] = Runner.create(Harris.Descriptor.call(gui))
+      lazy val runner: Runner[Params, Mat, Mat] = Runner.atomic(Harris.Descriptor.call(gui))
 
 
 
