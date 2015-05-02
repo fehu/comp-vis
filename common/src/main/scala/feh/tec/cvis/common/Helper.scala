@@ -100,4 +100,51 @@ object Helper{
    // todo
     }
   }
+
+  implicit object PointNumericImplicits extends Fractional.ExtraImplicits
+
+  implicit object PointIsFractional extends Fractional[Point]{
+    def negate(a: Point) = new Point(-a.x, -a.y)
+    
+    def plus(a: Point, b: Point)  = new Point(a.x + b.x, a.y + b.y)
+    def minus(a: Point, b: Point) = new Point(a.x - b.x, a.y - b.y)
+
+    def times(a: Point, b: Point) = new Point(a.x * b.x, a.y * b.y)
+    def div(a: Point, b: Point)   = new Point(a.x / b.x, a.y / b.y)
+
+    /** first compares x, if it's equal compares y */
+    def compare(a: Point, b: Point) = a.x compare b.x match {
+      case 0 => a.y compare b.y
+      case c => c
+    }
+
+    def fromInt(x: Int) = new Point(x, x)
+
+    /** vector abs */
+    def toDouble(a: Point) = math.sqrt(a.x*a.x + a.y*a.y)
+    /** vector abs */
+    def toFloat(a: Point) = toDouble(a).toFloat
+    /** vector abs */
+    def toLong(a: Point) = toDouble(a).toLong
+    /** vector abs */
+    def toInt(a: Point) = toDouble(a).toInt
+  }
+  
+  implicit class PointWrapper(p: Point){
+    def distance[D <: DistanceMeasure](to: Point)(implicit m: DistanceMeasure): Double = m.dist(p, to)
+//    def +(p2: Point): Point = new Point(p.x + p2.x, p.y + p2.y)
+//    def -(p2: Point): Point = new Point(p.x - p2.x, p.y - p2.y)
+    def pair: (Double, Double) = p
+  }
+
+  trait DistanceMeasure{
+    def dist(p1: Point, p2: Point): Double
+  }
+
+  import feh.tec.cvis.common.Helper.PointNumericImplicits._
+
+  type EuclideanDistance = EuclideanDistance.type
+  implicit object EuclideanDistance extends DistanceMeasure{
+    def dist(p1: Point, p2: Point): Double = (p1 - p2).toDouble
+  }
 }
