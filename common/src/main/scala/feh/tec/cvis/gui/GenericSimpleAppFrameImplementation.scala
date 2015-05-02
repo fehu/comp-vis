@@ -8,6 +8,8 @@ import java.util
 import javax.imageio.ImageIO
 import javax.swing.filechooser.FileNameExtensionFilter
 
+import feh.dsl.swing2.{Var, Monitor}
+import feh.dsl.swing2.ComponentExt._
 import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.gui.FileDrop._
 import feh.util._
@@ -125,7 +127,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
     def stop(): Unit = unregAFrame(this)
 
-    protected val upperPanel: Panel
+    protected val UpperPanel: Panel
 
     lazy val scrollableTabs = scrollable()(
       tabs(_.Top, _.Scroll)(configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
@@ -140,7 +142,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                                                     _.weightx = 1,
                                                     _.fill = Fill.Both
                                                   ))                                  at theCenter,
-        place(upperPanel, "apply")
+        place(UpperPanel, "apply")
         .transform(_.addLayout(
           _.weighty = 0
           ))                                                                          at theNorth
@@ -237,6 +239,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       conf: GenericConfigurationPanel =>
 
       type Params
+
+      def steps: Int
 
       def classTag: ClassTag[R]
       def runner: Runner[Params, Src, R]
@@ -381,9 +385,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     lazy val tabs = componentAccess.get("scrollable-tabs").get.asInstanceOf[ScrollPane].contents.head.asInstanceOf[TabbedPane]
 
-    def currentExec = _currentExec
+    def currentExec = _currentConfig
 
-    lazy val upperPanel = new FlowPanel with GenericConfigurationPanel with UpdateInterface{
+    object UpperPanel extends BoxPanel(Orientation.Vertical) with GenericConfigurationPanel with UpdateInterface{
       def updateForms() = {}
       def updateForm()  = {}
 
@@ -391,14 +395,19 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       override def lockForm(): Unit = {
         applyButton.text = "Abort"
+        progressBar.variable.set(0)
+        progressBar.component.max = _currentConfig.steps
+        progressBar.component.unlock()
         locked = true
       }
       override def unlockForm(): Unit = {
         applyButton.text = "Apply"
+        progressBar.variable.set(0)
+        progressBar.component.lock()
         locked = false
       }
 
-      contents += applyButton
+      contents += applyButton += progressBar.component
 
       def applyAction() = {
         lockForm()
@@ -434,10 +443,13 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         if(locked) abortAction() else applyAction()
       }.button("Apply").formMeta.form
 
+
+      lazy val progressBar = Monitor(_currentProgress, new ProgressBar)
     }
 
 
-    private var _currentExec: PanelExec[_, _] =  configurations.head._2
+    private var _currentConfig: PanelExec[_, _] =  configurations.head._2
+    private lazy val _currentProgress = Var(0)
 
     private var   _interrupted = false
     def           interrupted_? = synchronized(_interrupted)
@@ -456,7 +468,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
               case -1 => None
               case x  => Some(x)
             }
-            sel.map(tp.pages).foreach(page => _currentExec = configurations.find(_._1 == page.title).get._2)
+            sel.map(tp.pages).foreach(page => _currentConfig = configurations.find(_._1 == page.title).get._2)
         }
     }
 

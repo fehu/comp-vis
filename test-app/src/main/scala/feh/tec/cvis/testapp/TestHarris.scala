@@ -65,6 +65,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       object HarrisPanel extends SimpleVerticalPanel with HarrisConfigurationPanelExec{
         panel =>
 
+        def steps = 2
+
         def kStep = Some(GuiArgModifier.Step(0.001))
 
         def getSrc = originalMat
@@ -175,6 +177,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         with ConfigBuildHelperPanel
       {
 
+        def steps = nClustersMaxTries
+
         // get / set
 
         final type Params = Unit
@@ -274,6 +278,9 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                   res =>
                     println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
 
+                    UpperPanel.progressBar.variable.affect(_ + 1)
+                    UpperPanel.progressBar.component.label = s"$nClust clusters: compactness = ${res.compactness} "
+
                     if(res.compactness <= targetCompactness)  scala.Right(res)
                     else                                      scala.Left(nClust+nClustersStep)
                 }
@@ -289,41 +296,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
                 , maxTries = nClustersMaxTries
                 , err = s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries")
 
-/*
-        lazy val runner = Runner[Unit, List[((Int, Int), Double)], KMeansResult](
-          nextStep => _ => iPoints =>
-            if(iPoints.length >= initialNClusters){
-              val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
-
-              val best = new Mat()
-              def centersPolicy = if(best.empty()) centersInitialPolicy
-                                  else CentersPolicy.InitialLabels
-              def kMeans(nClusters: Int) = {
-                println("kMeans")
-                kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
-              }
-
-              doUntil(initialNClusters, nClustersMaxTries){
-                nClust =>
-                  nextStep()
-                  kMeans(nClust) |> {
-                    res =>
-                      println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
-
-                      if(res.compactness <= targetCompactness) scala.Right(res)
-                      else                                  scala.Left(nClust+nClustersStep)
-                  }}.right
-              .getOrElse(sys.error(s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries"))
-            }
-          else {
-              Dialog.showMessage(parent = frame,
-                                 message = "Number of clusters shouldn't be greater than number of points",
-                                 title = "Warning",
-                                 messageType = Dialog.Message.Warning)
-              KMeansResult.empty
-            }
-        )
-*/
 
         protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
