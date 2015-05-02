@@ -1,5 +1,7 @@
 ### TODO
 
+- [ ] Runner interruption
+
 - [x] color conversions
 - [ ] new panel for clustering
 - [ ] independent execution (of) 

@@ -6,14 +6,14 @@ import javax.swing.SpinnerNumberModel
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
 import feh.tec.cvis.common.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.describe.{ArgDescriptor, Harris, ConvertColor, CallDescriptor}
+import feh.tec.cvis.common.describe._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.tec.cvis.gui.configurations.Harris
 import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
 import feh.util._
 import org.opencv.core.{CvType, TermCriteria, Core, Mat}
-import scala.swing.Component
+import scala.swing.{Dialog, Component}
 import scala.swing.Swing._
 import Drawing._
 
@@ -39,7 +39,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
       protected def applyMat: Mat = originalMat
 
-      type Config = SimpleVerticalPanel with MatPanelExec
+      type Config = SimpleVerticalPanel with PanelExec[_, _]
 
       protected var originalGray: Mat = null
 
@@ -49,18 +49,18 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       protected var interestPointsCount: Int = 0
       protected var filteredInterestPointsCount: Int = 0
 
+      protected var clusteringResult = KMeansResult.empty
+
       lazy val configurations: Seq[(String, Config)] = Seq(
-        "harris" -> HarrisPanel
+        "harris"      -> HarrisPanel,
+        "clustering"  -> ClusteringPanel
       )
 
 
       object HarrisPanel extends SimpleVerticalPanel with HarrisConfigurationPanelExec{
-        def kStep = Some(GuiArgModifier.Step(0.001))
+        panel =>
 
-        lazy val elems: Seq[(String, Seq[Component with UpdateInterface])] =
-          formBuilders.mapVals{
-                                case (form, label) => label.formMeta.form :: form.formMeta.form :: Nil
-                              }
+        def kStep = Some(GuiArgModifier.Step(0.001))
 
         def getSrc = originalMat
         def setResult: Mat => Unit = _ => drawResult()
@@ -73,6 +73,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
           harrisFiltered = filterHarris(harrisResult).toList
           filteredInterestPointsCount = harrisFiltered.length
           drawResult()
+          panel.updateForms()
         }.button("Apply Threshold")
 
         var responseFunc: ResponseFunc = ResponseFunc.Original
@@ -159,7 +160,11 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
 //      List[((Int, Int), Double)]
 
-      object ClusteringPanel extends SimpleVerticalPanel with PanelExec[List[((Int, Int), Double)], KMeansResult]{
+      object ClusteringPanel
+        extends SimpleVerticalPanel
+        with PanelExec[List[((Int, Int), Double)], KMeansResult]
+        with ConfigBuildHelperPanel
+      {
 
         // get / set
 
@@ -168,36 +173,121 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         final def classTag = scala.reflect.classTag[KMeansResult]
 
-        def setResult: (KMeansResult) => Unit = ???
+        def setResult: (KMeansResult) => Unit = {
+          res =>
+            clusteringResult = res
+            drawResult()
+        }
         def getSrc = harrisFiltered
 
 
         // configurable vars
 
-        var initialNClusters = 250
-        var nClustersStep = 10
+        var initialNClusters = calcInitialNClusters
+        println("initialNClusters = " + initialNClusters)
+        var nClustersStep = 1
         var nClustersMaxTries = 100
+        
+        def tpe: TerminationCriteria.Type = TerminationCriteria.Type.Both // todo both for now
+        var criteriaMaxCount: Int = 1000
+        println("criteriaMaxCount = " + criteriaMaxCount)
+        var criteriaEpsilon: Double = 1e-3
 
-        var criteria = TerminationCriteria(_.Count, 1000, 1e-5)
         var attempts = 100
         var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
 
-        var maxCompactness = 1e4
+        var targetCompactness = 1e4
+
+        def criteria = TerminationCriteria(criteriaMaxCount, criteriaEpsilon)
 
 
-        object InitialNClusters extends ArgDescriptor[Int]("initial clusters count", null, MinCap(1))
+        def calcInitialNClusters  = Option(getSrc).map(_.length |> {c => if(c > 1000) c / 100 else if( c > 10) c / 10 else 1})
+                                                  .getOrElse(1)
 
+        object InitialNClusters     extends ArgDescriptor[Int]("initial number of clusters",              null, MinCap(1))
+        object NClustersStep        extends ArgDescriptor[Int]("step for the number of clusters search",  null, MinCap(1))
+        object NClustersMaxTries    extends ArgDescriptor[Int]("step for the number of clusters search",  null, MinCap(1))
+
+        object CriteriaMaxCount     extends ArgDescriptor[Int]    ("maximum tries", null, MinCap(1))
+        object CriteriaEpsilon      extends ArgDescriptor[Double] ("epsilon",       null, ArgModifier.Positive)
+        
+        object Attempts             extends ArgDescriptor[Int]          ("Number of attempts",     null, MinCap(1))
+
+        object CentersInitialPolicy extends ArgDescriptor[CentersPolicy]("centers initial policy", null)
+        lazy val centersInitialPolicyDomain = CentersPolicy.Random :: CentersPolicy.PP :: Nil
+
+        object TargetCompactness    extends ArgDescriptor[Double]("Target clusters compactness", null, ArgModifier.Positive) 
+        
         // configurable vars controls
 
+        lazy val initialNClustersControl      = mkNumericControl(InitialNClusters)  (initialNClusters, initialNClusters = _)
+        lazy val nClustersStepControl         = mkNumericControl(NClustersStep)     (nClustersStep, nClustersStep = _)
+        lazy val nClustersMaxTriesControl     = mkNumericControl(NClustersMaxTries) (nClustersMaxTries, nClustersMaxTries = _)
 
+        lazy val attemptsControl              = mkNumericControl(Attempts)          (attempts, attempts = _)
+        lazy val targetCompactnessControl     = mkNumericControl(TargetCompactness) (targetCompactness, targetCompactness = _)
+        lazy val centersInitialPolicyControl  = mkListControl(CentersInitialPolicy, centersInitialPolicyDomain)(centersInitialPolicy = _, _.toString)
 
+        lazy val criteriaMaxCountControl      = mkNumericControl(CriteriaMaxCount)  (criteriaMaxCount, criteriaMaxCount = _)
+        lazy val criteriaEpsilonControl       = mkNumericControl(CriteriaEpsilon)   (criteriaEpsilon, criteriaEpsilon = _)
 
+        lazy val criteriaControlPanel = panel.grid(2, 1)(
+          mkSmallPanel("criteriaMaxCount")(Seq(criteriaMaxCountControl._2, criteriaMaxCountControl._1)) -> "criteriaMaxCount",
+          mkSmallPanel("criteriaEpsilon")(Seq(criteriaEpsilonControl._2, criteriaEpsilonControl._1))    -> "criteriaEpsilon"
+        )
 
-        lazy val elems: Seq[(String, Seq[Component with TestHarris.UpdateInterface])] = ???
+        lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
+            "initialNClusters"    -> initialNClustersControl
+          , "nClustersStep"       -> nClustersStepControl
+          , "nClustersMaxTries"   -> nClustersMaxTriesControl
+//          , "criteriaPanel"       -> (criteriaControlPanel -> label("Termination criteria"))
+//          , "attempts"            -> attemptsControl
+//          , "centersInitialPolicy"-> centersInitialPolicyControl
+//          , "targetCompactness"   -> targetCompactnessControl
+        )
 
         // running
 
-        lazy val runner: Runner[Unit, List[((Int, Int), Double)], KMeansResult] = ???
+        lazy val runner = Runner[Unit, List[((Int, Int), Double)], KMeansResult](
+          _ => iPoints =>
+            if(iPoints.length >= initialNClusters){
+              val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
+
+              val best = new Mat()
+              def centersPolicy = if(best.empty()) centersInitialPolicy
+                                  else CentersPolicy.InitialLabels
+              def kMeans(nClusters: Int) = {
+                println("kMeans")
+                kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
+              }
+
+
+              doUntil(initialNClusters, nClustersMaxTries)(
+                nClust =>
+                  kMeans(nClust) |> {
+                    res =>
+                      println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
+
+                      if(res.compactness <= targetCompactness) scala.Right(res)
+                      else                                  scala.Left(nClust+nClustersStep)
+                  }).right
+              .getOrElse(sys.error(s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries"))
+            }
+          else {
+              Dialog.showMessage(parent = frame,
+                                 message = "Number of clusters shouldn't be greater than number of points",
+                                 title = "Warning",
+                                 messageType = Dialog.Message.Warning)
+              KMeansResult.empty
+            }
+        )
+
+        // draw
+
+        def drawResult()  = {
+          affectImageMat(img => clusteringResult.centers.foreach(img.draw.circle(_, 5, Color.blue)))
+          repaintImage()
+        }
 
       }
 
@@ -265,11 +355,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
             "threshold" -> (thresholdControl -> label("Threshold"))
           )
 
-        lazy val elems: Seq[(String, Seq[Component with UpdateInterface])] =
-          formBuilders.mapVals{
-            case (form, label) => label.formMeta.form :: form.formMeta.form :: Nil
-          }
-
         def kStep = Some(GuiArgModifier.Step(0.001))
 
 
@@ -287,7 +372,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         var nClustersStep = 10
         var nClustersMaxTries = 100
 
-        var criteria = TerminationCriteria(_.Count, 1000, 1e-5)
+        var criteria = TerminationCriteria(TerminationCriteria.Type.Count, 1000, 1e-5)
         var attempts = 100
         var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
 

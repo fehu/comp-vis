@@ -63,11 +63,10 @@ case class TerminationCriteria(tpe: TerminationCriteria.Type, maxCount: Int, eps
 }
 
 object TerminationCriteria{
-  def apply(tpe: TerminationCriteria.Type.type => TerminationCriteria.Type,
-            maxCount: Int,
-            epsilon: Double
-             ): TerminationCriteria =
-    new TerminationCriteria(tpe(TerminationCriteria.Type), maxCount, epsilon)
+
+  def byCount(c: Int) = new TerminationCriteria(Type.Count, c, Double.NaN)
+  def byEpsilon(eps: Double) = new TerminationCriteria(Type.Epsilon, -1, eps)
+  def apply(c: Int, eps: Double) = new TerminationCriteria(Type.Both, c, eps)
 
   implicit def terminationCriteriaToCV(tc: TerminationCriteria): TermCriteria = tc.underlying
 
@@ -80,9 +79,9 @@ object TerminationCriteria{
     def MaxIter = Count
 
     /** The desired accuracy threshold or change in parameters at which the iterative algorithm is terminated. */
-    object EPS extends Type(TermCriteria.EPS)
+    object Epsilon extends Type(TermCriteria.EPS)
 
     /** COUNT + EPS */
-    object CountEPS extends Type(TermCriteria.COUNT + TermCriteria.EPS)
+    object Both extends Type(TermCriteria.COUNT + TermCriteria.EPS)
   }
 }

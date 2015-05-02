@@ -9,10 +9,10 @@ trait Clustering {
   sealed abstract class CentersPolicy(val value: Int)
   object CentersPolicy{
     /** Select random initial centers in each attempt */
-    object Random extends CentersPolicy(Core.KMEANS_RANDOM_CENTERS)
+    object Random extends CentersPolicy(Core.KMEANS_RANDOM_CENTERS){ override def toString = "Random" }
 
     /**  Use <code>kmeans++</code> center initialization by Arthur and Vassilvitskii [Arthur2007]. */
-    object PP extends CentersPolicy(Core.KMEANS_PP_CENTERS)
+    object PP extends CentersPolicy(Core.KMEANS_PP_CENTERS) { override def toString = "PP" }
 
     /**
      * During the first (and possibly the only)
@@ -90,6 +90,11 @@ trait Clustering {
    }
 
 
-  case class KMeansResult(centers: Stream[Point], bestLabels: Mat, compactness: Double)
+  case class KMeansResult(centers: Stream[Point], bestLabels: Mat, compactness: Double){
+    def isEmpty = bestLabels == null && centers.isEmpty
+  }
+  object KMeansResult{
+    def empty = KMeansResult(Stream.empty, null, 0)
+  }
 
 }

@@ -342,9 +342,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       setDebugBorder(this, Color.red)
 
-      val elems: Seq[(String, Seq[Component with UpdateInterface])]
+      val elems: Seq[(String, Seq[Component])]
 
-      def updateForms(): Unit = elems.foreach(_._2.foreach(_.updateForm()))
+      def updateForms(): Unit = elems.foreach(_._2.foreach(updateIfPossible))
 
       contents += thePanel
 
@@ -355,7 +355,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       private def prepareElems = elems.map{ case (k, v) => mkSmallPanel(k)(v) -> k }.toSeq
 
-      private def mkSmallPanel(id: String)(seq: Seq[Component with UpdateInterface]) =
+      protected def mkSmallPanel(id: String)(seq: Seq[Component]) =
         panel
           .box(_.Vertical)(seq.zip(Range(0, seq.length)).map(p => p._1 -> (id + "-" + p._2)): _*)
           .pipe(setDebugBorder(Color.blue))

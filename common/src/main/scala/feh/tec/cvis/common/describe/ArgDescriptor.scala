@@ -29,7 +29,6 @@ object ArgModifier{
 
   def Positive   [T](implicit pos: Positive[T])     = pos
   def NonNegative[T](implicit nneg: NonNegative[T]) = nneg
-  def Integer    [T](implicit int: Integer[T])      = int
 
   def NotEmpty   [T](implicit ne: NotEmpty[T])      = ne
 
