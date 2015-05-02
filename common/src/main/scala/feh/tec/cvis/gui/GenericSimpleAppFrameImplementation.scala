@@ -1,25 +1,27 @@
 package feh.tec.cvis.gui
 
 import java.awt.color.ColorSpace
-import java.util
-import javax.swing.filechooser.{FileNameExtensionFilter, FileFilter}
-import java.awt.{Transparency, Color, Dimension}
 import java.awt.image._
+import java.awt.{Color, Dimension, Transparency}
 import java.io.File
+import java.util
 import javax.imageio.ImageIO
+import javax.swing.filechooser.FileNameExtensionFilter
+
 import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.common.describe.CallDescriptor.Callable
-import org.opencv.core.{CvType, Mat}
-import scala.concurrent.Future
-import scala.reflect.ClassTag
-import scala.swing.GridBagPanel.{Fill, Anchor}
-import scala.swing._
+import feh.tec.cvis.gui.FileDrop._
 import feh.util._
 import feh.util.file._
-import FileDrop._
-import scala.swing.event.{SelectionChanged, Key, MouseClicked}
-import scala.util.{Failure, Success}
+import org.opencv.core.{CvType, Mat}
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.reflect.ClassTag
+import scala.swing.GridBagPanel.{Anchor, Fill}
+import scala.swing._
+import scala.swing.event.{MouseClicked, SelectionChanged}
+import scala.util.Failure
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -124,7 +126,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
     def stop(): Unit = unregAFrame(this)
 
-    protected val applyPanel: Panel
+    protected val upperPanel: Panel
 
     lazy val scrollableTabs = scrollable()(
       tabs(_.Top, _.Scroll)(configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
@@ -139,7 +141,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                                                     _.weightx = 1,
                                                     _.fill = Fill.Both
                                                   ))                                  at theCenter,
-        place(applyPanel, "apply")
+        place(upperPanel, "apply")
         .transform(_.addLayout(
           _.weighty = 0
           ))                                                                          at theNorth
@@ -369,38 +371,69 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def currentExec = _currentExec
 
-    lazy val applyPanel = new FlowPanel with GenericConfigurationPanel{
+    lazy val upperPanel = new FlowPanel with GenericConfigurationPanel with UpdateInterface{
       def updateForms() = {}
+      def updateForm()  = {}
+
+      private var locked = false
+
+      override def lockForm(): Unit = {
+        applyButton.text = "Abort"
+        locked = true
+      }
+      override def unlockForm(): Unit = {
+        applyButton.text = "Apply"
+        locked = false
+      }
 
       contents += applyButton
 
-      lazy val applyButton: Component = triggerFor{
-        applyButton.tryLock()
+      def applyAction() = {
+        lockForm()
         tabs.tryLock()
-        Future{ panelExec(currentExec) }.onComplete{
-          res =>
-            println("exec complete")
-            tabs.tryUnlock()
-            tabs.tryUpdate()
-            applyButton.tryUnlock()
-            res match {
-              case Failure(thr) =>
-                thr.printStackTrace()
-                println("error dialog")
-                Dialog.showMessage(parent = frame,
-                                   message = thr.toString,
-                                   title = "Error",
-                                   messageType = Dialog.Message.Error)
 
-              case _ =>
-            }
-        }
-       }.button("Apply")
-        .component
+        Future{ panelExec(currentExec) }.onComplete{
+         res =>
+           println("exec complete")
+           tabs.tryUnlock()
+           tabs.tryUpdate()
+           unlockForm()
+           finished()
+
+           res match {
+             case Failure(Interrupted) =>
+             case Failure(thr) =>
+               thr.printStackTrace()
+               println("error dialog")
+               Dialog.showMessage(parent = frame,
+                                  message = thr.toString,
+                                  title = "Error",
+                                  messageType = Dialog.Message.Error)
+
+             case _ =>
+           }
+       }
+      }
+
+      def abortAction() = interrupt()
+
+
+      lazy val applyButton: Button = triggerFor{
+        if(locked) abortAction() else applyAction()
+      }.button("Apply").formMeta.form
+
     }
 
 
     private var _currentExec: PanelExec[_, _] =  configurations.head._2
+
+    private var   _interrupted = false
+    def           interrupted_? = synchronized(_interrupted)
+    protected def finished() = synchronized(_interrupted = false)
+    def           interrupt() = synchronized(_interrupted = true)
+
+    case object Interrupted extends Exception
+
 
     tabs |> {
       tp =>

@@ -267,7 +267,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
               doUntil(initialNClusters, nClustersMaxTries)(
                 nClust =>
-                  kMeans(nClust) |> {
+                  if(interrupted_?) throw Interrupted
+                  else kMeans(nClust) |> {
                     res =>
                       println(s"kmeans with $nClust clusters: compactness = ${res.compactness}")
 

@@ -1,6 +1,6 @@
 ### TODO
 
-- [ ] Runner interruption
+- [x] Runner interruption
 - [ ] progress bar for clustering
 - [ ] max interest point cap
 - [ ] filter intersecting clusters
