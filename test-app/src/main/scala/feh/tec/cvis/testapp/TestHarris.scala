@@ -77,7 +77,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         lazy val applyThresholdButton = triggerFor{
           setHarrisFiltered( filterHarris(harrisResult) )
           drawHarris()
-          frame.updateForms()
+          tabs.tryUpdate()
         }.button("Apply Threshold")
 
         var responseFunc: ResponseFunc = ResponseFunc.Original
@@ -193,7 +193,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         
         def tpe: TerminationCriteria.Type = TerminationCriteria.Type.Both // todo both for now
         var criteriaMaxCount: Int = 1000
-        println("criteriaMaxCount = " + criteriaMaxCount)
         var criteriaEpsilon: Double = 1e-3
 
         var attempts = 100

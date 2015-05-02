@@ -10,6 +10,7 @@ import javax.imageio.ImageIO
 import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.common.describe.CallDescriptor.Callable
 import org.opencv.core.{CvType, Mat}
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.swing.GridBagPanel.{Fill, Anchor}
 import scala.swing._
@@ -17,6 +18,8 @@ import feh.util._
 import feh.util.file._
 import FileDrop._
 import scala.swing.event.{SelectionChanged, Key, MouseClicked}
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
@@ -124,7 +127,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     protected val applyPanel: Panel
 
     lazy val scrollableTabs = scrollable()(
-      tabs(_.Top, _.Scroll, configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
+      tabs(_.Top, _.Scroll)(configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
       "scrollable-tabs"
     ) |> setDebugBorder(Color.green)
 
@@ -218,7 +221,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     def toBufferImage(mat: Mat): BufferedImage
 
     
-    trait PanelExec[Src, R]{
+    trait PanelExec[Src, R] extends Component{
       conf: GenericConfigurationPanel =>
 
       type Params
@@ -332,7 +335,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
   }
 
   trait ConfigurationsPanelBuilder{
-    frame: GenericSimpleAppFrame with FrameExec =>
+    frame: GenericSimpleAppFrame with FrameExec with LayoutDSL =>
 
     def setDebugBorder[B <: AbstractDSLBuilder](color: Color)(b: B): B
     def setDebugBorder(c: Component, color: Color): Unit
@@ -344,7 +347,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       val elems: Seq[(String, Seq[Component])]
 
-      def updateForms(): Unit = elems.foreach(_._2.foreach(updateIfPossible))
+      def updateForms(): Unit = elems.foreach(_._2.foreach(_.tryUpdate()))
 
       contents += thePanel
 
@@ -362,6 +365,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     }
 
+    lazy val tabs = componentAccess.get("scrollable-tabs").get.asInstanceOf[ScrollPane].contents.head.asInstanceOf[TabbedPane]
+
     def currentExec = _currentExec
 
     lazy val applyPanel = new FlowPanel with GenericConfigurationPanel{
@@ -369,19 +374,27 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       contents += applyButton
 
-      lazy val applyButton = triggerFor{
-         try {
-           panelExec(currentExec)
-//           repaintImage()   // should be called for each panel separately
-           frame.updateForms()
-         }
-         catch {
-           case thr: Throwable =>
-             thr.printStackTrace()
-             Dialog.showMessage(message = thr.toString,
-                                title = "Error",
-                                messageType = Dialog.Message.Error)
-         }
+      lazy val applyButton: Component = triggerFor{
+        applyButton.tryLock()
+        tabs.tryLock()
+        Future{ panelExec(currentExec) }.onComplete{
+          res =>
+            println("exec complete")
+            tabs.tryUnlock()
+            tabs.tryUpdate()
+            applyButton.tryUnlock()
+            res match {
+              case Failure(thr) =>
+                thr.printStackTrace()
+                println("error dialog")
+                Dialog.showMessage(parent = frame,
+                                   message = thr.toString,
+                                   title = "Error",
+                                   messageType = Dialog.Message.Error)
+
+              case _ =>
+            }
+        }
        }.button("Apply")
         .component
     }
@@ -389,7 +402,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     private var _currentExec: PanelExec[_, _] =  configurations.head._2
 
-    componentAccess.get("scrollable-tabs").get.asInstanceOf[ScrollPane].contents.head.asInstanceOf[TabbedPane] |> {
+    tabs |> {
       tp =>
         frame.listenTo(tp.selection)
         frame.reactions += {
@@ -398,10 +411,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
               case -1 => None
               case x  => Some(x)
             }
-            val pageOpt = sel.map(tp.pages)
-            println("SelectionChanged: " + pageOpt)
-            pageOpt.foreach(page => _currentExec = configurations.find(_._1 == page.title).get._2)
-//            ??? // todo
+            sel.map(tp.pages).foreach(page => _currentExec = configurations.find(_._1 == page.title).get._2)
         }
     }
 
