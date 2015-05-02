@@ -3,11 +3,12 @@
 - [ ] Runner interruption
 
 - [x] color conversions
-- [ ] new panel for clustering
-- [ ] independent execution (of) 
+- [x] new panel for clustering
+- [x] independent execution (of) 
 - [x] --- Harris
 - [x] --- interest points filtering
-- [ ] --- clustering with visible intermediate result
+- [x] --- clustering with visible intermediate result
+- [ ] progress bar for clustering
 - [ ] max interest point cap
 
 - [ ] move both images simultaneously images by dragging

@@ -95,7 +95,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     with Frame9PositionsLayoutBuilder
     with FrameExec
   {
-    var LayoutDebug = true
+    var LayoutDebug = false
 
     def setDebugBorder[B <: AbstractDSLBuilder](color: Color)(b: B): B =
       if(LayoutDebug) b.affect(_.border = Swing.LineBorder(color)).asInstanceOf[B]
@@ -394,9 +394,13 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         frame.listenTo(tp.selection)
         frame.reactions += {
           case SelectionChanged(`tp`) =>
-            println("SelectionChanged")
-//            val name = tp.selection.page.title
-//            _currentExec = configurations.find(_._1 == name).get._2
+            val sel = tp.selection.index match {
+              case -1 => None
+              case x  => Some(x)
+            }
+            val pageOpt = sel.map(tp.pages)
+            println("SelectionChanged: " + pageOpt)
+            pageOpt.foreach(page => _currentExec = configurations.find(_._1 == page.title).get._2)
 //            ??? // todo
         }
     }

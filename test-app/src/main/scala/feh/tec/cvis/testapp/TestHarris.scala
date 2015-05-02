@@ -37,6 +37,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
     {
       frame =>
 
+//      LayoutDebug = true
+
       protected def applyMat: Mat = originalMat
 
       type Config = SimpleVerticalPanel with PanelExec[_, _]
@@ -46,8 +48,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       protected var harrisResult  : List[((Int, Int), Double)] = Nil
       protected var harrisFiltered: List[((Int, Int), Double)] = Nil
 
-      protected var interestPointsCount: Int = 0
       protected var filteredInterestPointsCount: Int = 0
+      protected var initialNClusters: Int = 1
 
       protected var clusteringResult = KMeansResult.empty
 
@@ -56,6 +58,9 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         "clustering"  -> ClusteringPanel
       )
 
+      def calcInitialNClusters(c: Int) =  if      (c > 1000)  c / 100
+                                          else if (c > 10)    c / 10
+                                          else                1
 
       object HarrisPanel extends SimpleVerticalPanel with HarrisConfigurationPanelExec{
         panel =>
@@ -63,17 +68,16 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         def kStep = Some(GuiArgModifier.Step(0.001))
 
         def getSrc = originalMat
-        def setResult: Mat => Unit = _ => drawResult()
+        def setResult: Mat => Unit = _ => drawHarris()
 
         var threshold: Double = 0.1
         lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
                                     .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
 
         lazy val applyThresholdButton = triggerFor{
-          harrisFiltered = filterHarris(harrisResult).toList
-          filteredInterestPointsCount = harrisFiltered.length
-          drawResult()
-          panel.updateForms()
+          setHarrisFiltered( filterHarris(harrisResult) )
+          drawHarris()
+          frame.updateForms()
         }.button("Apply Threshold")
 
         var responseFunc: ResponseFunc = ResponseFunc.Original
@@ -110,6 +114,12 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
               .mapVals(response)
         }
 
+        def setHarrisFiltered(seq: Seq[((Int, Int), Double)]) = {
+          harrisFiltered = seq.toList
+          filteredInterestPointsCount = harrisFiltered.length
+          initialNClusters = calcInitialNClusters(filteredInterestPointsCount)
+        }
+
         override lazy val runner: Runner[Params, Mat, Mat] = Runner {
           params =>
             src =>
@@ -120,11 +130,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
                   val responses = responseFunc.fromGray(grayImg)
                   harrisResult = responses.toList            // TODO !!! no side effects should be present here
-                  interestPointsCount = harrisResult.length
 
-                  val filtered = filterHarris(harrisResult)
-                  harrisFiltered = filtered.toList
-                  filteredInterestPointsCount = harrisFiltered.length
+                  setHarrisFiltered( filterHarris(harrisResult) )
                 grayImg
               }
         }
@@ -139,7 +146,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
 
-        lazy val showInterestPointsCount          = monitorFor(s"Interest points found: $interestPointsCount").text
         lazy val showFilteredInterestPointsCount  = monitorFor(s"Filtered interest points: $filteredInterestPointsCount").text
 
         override def formBuilders: Seq[(String, (TestHarris.DSLFormBuilder[_], TestHarris.DSLLabelBuilder[_]))] =
@@ -147,11 +153,10 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
             "responseFunc"                  -> (responseFuncControl -> label("Response Function")),
             "threshold"                     -> (thresholdControl    -> label("Threshold")),
             "applyThreshold"                -> (applyThresholdButton            -> label("")),
-            "interestPointsCount"           -> (showInterestPointsCount         -> label("")),
             "filteredInterestPointsCount"   -> (showFilteredInterestPointsCount -> label(""))
           )
 
-        def drawResult() = {
+        def drawHarris() = {
           Option(originalGray) map (_.clone()) foreach setImageMat
           affectImageMat(img => harrisFiltered.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
           repaintImage()
@@ -176,15 +181,13 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         def setResult: (KMeansResult) => Unit = {
           res =>
             clusteringResult = res
-            drawResult()
+            drawClusterCenters()
         }
         def getSrc = harrisFiltered
 
 
         // configurable vars
 
-        var initialNClusters = calcInitialNClusters
-        println("initialNClusters = " + initialNClusters)
         var nClustersStep = 1
         var nClustersMaxTries = 100
         
@@ -199,10 +202,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         var targetCompactness = 1e4
 
         def criteria = TerminationCriteria(criteriaMaxCount, criteriaEpsilon)
-
-
-        def calcInitialNClusters  = Option(getSrc).map(_.length |> {c => if(c > 1000) c / 100 else if( c > 10) c / 10 else 1})
-                                                  .getOrElse(1)
 
         object InitialNClusters     extends ArgDescriptor[Int]("initial number of clusters",              null, MinCap(1))
         object NClustersStep        extends ArgDescriptor[Int]("step for the number of clusters search",  null, MinCap(1))
@@ -225,25 +224,30 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         lazy val nClustersMaxTriesControl     = mkNumericControl(NClustersMaxTries) (nClustersMaxTries, nClustersMaxTries = _)
 
         lazy val attemptsControl              = mkNumericControl(Attempts)          (attempts, attempts = _)
-        lazy val targetCompactnessControl     = mkNumericControl(TargetCompactness) (targetCompactness, targetCompactness = _)
+        lazy val targetCompactnessControl     = mkNumericControl(TargetCompactness) (targetCompactness, targetCompactness = _) |> fixPreferredSize
         lazy val centersInitialPolicyControl  = mkListControl(CentersInitialPolicy, centersInitialPolicyDomain)(centersInitialPolicy = _, _.toString)
 
         lazy val criteriaMaxCountControl      = mkNumericControl(CriteriaMaxCount)  (criteriaMaxCount, criteriaMaxCount = _)
-        lazy val criteriaEpsilonControl       = mkNumericControl(CriteriaEpsilon)   (criteriaEpsilon, criteriaEpsilon = _)
+        lazy val criteriaEpsilonControl       = mkNumericControl(CriteriaEpsilon)   (criteriaEpsilon, criteriaEpsilon = _) |> fixPreferredSize
 
-        lazy val criteriaControlPanel = panel.grid(2, 1)(
-          mkSmallPanel("criteriaMaxCount")(Seq(criteriaMaxCountControl._2, criteriaMaxCountControl._1)) -> "criteriaMaxCount",
-          mkSmallPanel("criteriaEpsilon")(Seq(criteriaEpsilonControl._2, criteriaEpsilonControl._1))    -> "criteriaEpsilon"
+        lazy val criteriaControlPanel = panel.grid(1, 1)(
+          mkSmallPanel("criteriaMaxCount")(Seq(criteriaMaxCountControl._2, criteriaMaxCountControl._1))                   -> "criteriaMaxCount"
+        , (mkSmallPanel("criteriaEpsilon")(Seq(criteriaEpsilonControl._2, criteriaEpsilonControl._1))) -> "criteriaEpsilon"
         )
 
+
+        def fixPreferredSize[B <: AbstractDSLBuilder]: ((B, DSLLabelBuilder[_])) => (B, DSLLabelBuilder[_]) = {
+          case (c, l) => c.affect(x => x.preferredSize = 200 -> x.preferredSize._2).asInstanceOf[B] -> l
+        }
+        
         lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
             "initialNClusters"    -> initialNClustersControl
           , "nClustersStep"       -> nClustersStepControl
           , "nClustersMaxTries"   -> nClustersMaxTriesControl
-//          , "criteriaPanel"       -> (criteriaControlPanel -> label("Termination criteria"))
-//          , "attempts"            -> attemptsControl
-//          , "centersInitialPolicy"-> centersInitialPolicyControl
-//          , "targetCompactness"   -> targetCompactnessControl
+          , "criteriaPanel"       -> (criteriaControlPanel -> label("Termination criteria"))
+          , "attempts"            -> attemptsControl
+          , "centersInitialPolicy"-> centersInitialPolicyControl
+          , "targetCompactness"   -> targetCompactnessControl
         )
 
         // running
@@ -284,8 +288,8 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
 
         // draw
 
-        def drawResult()  = {
-          affectImageMat(img => clusteringResult.centers.foreach(img.draw.circle(_, 5, Color.blue)))
+        def drawClusterCenters()  = {
+          affectImageMat(img => clusteringResult.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
           repaintImage()
         }
 
