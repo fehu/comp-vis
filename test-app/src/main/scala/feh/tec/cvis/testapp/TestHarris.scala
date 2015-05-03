@@ -52,7 +52,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
         def getSrc = harrisFiltered
 
         override def drawGroupsCenters(): Unit = {
-          HarrisPanel.drawHarris()
+          if(repaint_?.get) HarrisPanel.drawHarris()
           super.drawGroupsCenters()
         }
       }
@@ -62,7 +62,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
 
 
         override def drawClusterCenters() = {
-          HarrisPanel.drawHarris()
+          if(repaint_?.get) HarrisPanel.drawHarris()
           super.drawClusterCenters()
         }
       }

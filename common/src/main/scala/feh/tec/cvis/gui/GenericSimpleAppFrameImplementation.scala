@@ -8,7 +8,7 @@ import java.util
 import javax.imageio.ImageIO
 import javax.swing.filechooser.FileNameExtensionFilter
 
-import feh.dsl.swing2.{Var, Monitor}
+import feh.dsl.swing2.{Var, Monitor, Control}
 import feh.dsl.swing2.ComponentExt._
 import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.gui.FileDrop._
@@ -130,7 +130,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     protected val UpperPanel: Panel
 
     lazy val scrollableTabs = scrollable()(
-      tabs(_.Top, _.Scroll)(configurations $$ {_.mapVals(_.minimumSize = 200 -> 200)} map (_.swap: LayoutElem)),
+      tabs(_.Top, _.Scroll)(configurations map (_.swap: LayoutElem)),
       "scrollable-tabs"
     ) |> setDebugBorder(Color.green)
 
@@ -388,7 +388,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def currentExec = _currentConfig
 
-    object UpperPanel extends GridPanel(2, 1) with GenericConfigurationPanel with UpdateInterface{
+    object UpperPanel extends GridBagPanel with GenericConfigurationPanel with UpdateInterface{
       def updateForms() = {}
       def updateForm()  = {}
 
@@ -399,6 +399,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         progressBar.variable.set(0)
         progressBar.component.max = _currentConfig.steps
         progressBar.component.unlock()
+        repaintCheckbox.component.lock()
         locked = true
       }
       override def unlockForm(): Unit = {
@@ -406,10 +407,15 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         progressBar.variable.set(0)
         progressBar.component.label = null
         progressBar.component.lock()
+        repaintCheckbox.component.unlock()
         locked = false
       }
 
-      contents += progressBar.component += applyButton
+      layout ++= Seq(
+        repaintCheckbox.component -> (new Constraints() $$ (_.grid = 0 -> 0))
+      , progressBar.component     -> (new Constraints() $$ (_.grid = 1 -> 0) $$ (_.weightx = 1) $$ (_.fill = Fill.Horizontal))
+      , applyButton.component     -> (new Constraints() $$ (_.grid = 0 -> 1) $$ (_.weightx = 1) $$ (_.fill = Fill.Horizontal) $$ (_.gridwidth = 2))
+      )
 
       def applyAction() = {
         lockForm()
@@ -446,7 +452,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       }.button("Apply").formMeta.form
 
 
-      lazy val progressBar = Monitor(_currentProgress, new ProgressBar $$ (_.labelPainted = true))
+      lazy val progressBar = Monitor(currentProgress, new ProgressBar $$ (_.labelPainted = true))
+
+      lazy val repaintCheckbox = Control(repaint_?, new CheckBox("repaint"))
 
       def updateProgress(msg: String) = {
         progressBar.variable.affect(_ + 1)
@@ -456,7 +464,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
 
     private var _currentConfig: PanelExec[_, _] =  configurations.head._2
-    private lazy val _currentProgress = Var(0)
+    protected lazy val currentProgress = Var(0)
+    protected lazy val repaint_? = Var(true)
 
     private var   _interrupted = false
     def           interrupted_? = synchronized(_interrupted)

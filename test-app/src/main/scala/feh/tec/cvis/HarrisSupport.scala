@@ -49,7 +49,7 @@ trait HarrisSupport extends Harris{
                                   .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
 
       lazy val applyThresholdButton = triggerFor{
-        setHarrisFiltered( filterHarris(harrisResult) )
+        if(repaint_?.get) setHarrisFiltered( filterHarris(harrisResult) )
         drawHarris()
         tabs.tryUpdate()
       }.button("Apply Threshold")
@@ -139,7 +139,7 @@ trait HarrisSupport extends Harris{
         )
 
       def drawHarris() = {
-        Option(originalGray) map (_.clone()) foreach setImageMat
+        if(repaint_?.get) Option(originalGray) map (_.clone()) foreach setImageMat
         affectImageMat(img => harrisFiltered.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
         repaintImage()
       }
