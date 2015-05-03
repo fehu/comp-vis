@@ -138,9 +138,8 @@ object Helper{
   
   implicit class PointWrapper(p: Point){
     def distance[D <: DistanceMeasure](to: Point)(implicit m: DistanceMeasure): Double = m.dist(p, to)
-//    def +(p2: Point): Point = new Point(p.x + p2.x, p.y + p2.y)
-//    def -(p2: Point): Point = new Point(p.x - p2.x, p.y - p2.y)
-    def pair: (Double, Double) = p
+    def pair    : (Double, Double)  = p
+    def pairInt : (Int, Int)        = p._1.toInt -> p._2.toInt
   }
 
   implicit class PointsWrapper(ps: Seq[Point]){

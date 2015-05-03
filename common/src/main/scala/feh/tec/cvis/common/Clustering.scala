@@ -86,15 +86,15 @@ trait Clustering {
     val compactness = Core.kmeans(data, k, bestLabels, criteria, attempts, centersPolicy.value, centers)
     val stream = centers.byRow(row => _.toArray[Float]: Point )
 
-    KMeansResult(stream, bestLabels, compactness)
+    KMeansResult(stream.toList, bestLabels, compactness)
    }
 
 
-  case class KMeansResult(centers: Stream[Point], bestLabels: Mat, compactness: Double){
+  case class KMeansResult(centers: List[Point], bestLabels: Mat, compactness: Double){
     def isEmpty = bestLabels == null && centers.isEmpty
   }
   object KMeansResult{
-    def empty = KMeansResult(Stream.empty, null, 0)
+    def empty = KMeansResult(Nil, null, 0)
   }
 
 }

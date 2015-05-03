@@ -1,6 +1,6 @@
 package feh.tec.cvis.testapp
 
-import java.awt.Dimension
+import java.awt.{Color, Dimension}
 import java.awt.image._
 
 import feh.dsl.swing2.Var
@@ -9,6 +9,7 @@ import feh.tec.cvis.common._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.{GrouppingSupport, HarrisSupport, KMeansSupport}
 import org.opencv.core._
+import feh.util._
 
 import scala.swing.Swing._
 
@@ -16,6 +17,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
   with HarrisSupport 
   with KMeansSupport
   with GrouppingSupport
+  with Drawing
 {
 
   CV.loadNative()
@@ -38,7 +40,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
 
 //      LayoutDebug = true
 
-      protected def applyMat: Mat = originalMat
+      protected val distinctInterestPoints: Var[Set[Point]] = Var(Set())
 
       type Config = SimpleVerticalPanel with PanelExec[_, _]
 
@@ -47,28 +49,34 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
           "harris"      -> HarrisPanel
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
+        , "distinct"    -> DistinctPanel
       )
+
+
 
       object GroupingPanel extends GroupingPanel{
 
-        def getSrc = harrisFiltered
+        def getSrc = harrisFiltered.map(_._1: Point)
 
         override def drawGroupsCenters(): Unit = {
-          KMeansPanel.getInitialLabels set {              // todo: should be in another place, not in draw
-            val inGroups = groupsCentersWithPoints.map(_._2)
-            val outOfGroups = harrisFiltered
-                                .withFilter(x => !inGroups.exists(_.contains(x._1)))
-                                .map{
-                                  case (p, _) => Set(p: Point)
-                                }
-            inGroups ++ outOfGroups
-          }
+          KMeansPanel.getInitialLabels set groupsCentersWithPoints.get.map(_._2) // todo: should be in another place, not in draw
+          // {
+//            val inGroups = groupsCentersWithPoints.get.map(_._2)
+//            val outOfGroups = harrisFiltered
+//                                .withFilter(x => !inGroups.exists(_.contains(x._1)))
+//                                .map{
+//                                  case (p, _) => Set(p: Point)
+//                                }
+//            inGroups ++ outOfGroups
+//          }
 
           if(repaint_?.get) HarrisPanel.drawHarris()
           super.drawGroupsCenters()
         }
       }
-      
+
+
+
       object KMeansPanel extends KMeansPanel {
         def getSrc = harrisFiltered
 
@@ -82,6 +90,62 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
 
         UpperPanel.onError +:= ((_: Throwable) => useInitialLabels.set(false))
       }
+
+
+
+      object DistinctPanel extends GroupingPanel{
+
+        sealed trait Source
+        object Source{
+          case object None      extends Source{ override def toString = "[None]" }
+          case object Grouping  extends Source{ override def toString = "grouping" }
+          case object KMeans    extends Source{ override def toString = "k-means" }
+        }
+
+        lazy val gcSrc: Var[Source] = Var(Source.None)
+
+        protected lazy val sourcesAvailable = Var(Set[Source](Source.None))
+
+        groupsCentersWithPoints.onChange(l => if(l.isEmpty) sourcesAvailable.affect(_ - Source.Grouping)
+                                              else          sourcesAvailable.affect(_ + Source.Grouping))
+
+        clusteringResult       .onChange(l => if(l.isEmpty) sourcesAvailable.affect(_ - Source.KMeans)
+                                              else          sourcesAvailable.affect(_ + Source.KMeans))
+
+        sourcesAvailable.onChange(_ => sourceControl.component.tryUpdate())
+
+        lazy val sourceControl = controlForSeq(sourcesAvailable.get.toSeq).dropDownList(gcSrc.set)
+
+
+        override def formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
+          "distinctSourceControl"           -> (sourceControl -> label("Source"))
+        , "maxPairToPairInClusterDistance2" -> maxPairToPairInClusterDistanceControl
+        )
+
+
+        def getSrc: List[Point] = gcSrc.get match {
+          case Source.Grouping  => groupsCentersWithPoints.get.map(_._1)
+          case Source.KMeans    => clusteringResult.get.centers
+          case Source.None      => Nil
+        }
+
+        override def setResult: (List[(Point, Set[Point])]) => Unit = v => {
+          distinctInterestPoints set v.map(_._1).toSet
+          drawGroupsCenters()
+        }
+
+        override def drawGroupsCenters(): Unit = {
+          if(repaint_?.get) HarrisPanel.drawHarris()
+
+          affectImageMat(img => distinctInterestPoints.get.foreach{ p => img.draw.circle(p.swap, maxPairToPairInClusterDistance.toInt, Color.cyan, thickness = 2) })
+          repaintImage()
+        }
+      }
+
+
+
+
+
 
       frame.updateForms()
     }

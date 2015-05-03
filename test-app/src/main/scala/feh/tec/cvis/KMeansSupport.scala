@@ -24,7 +24,7 @@ trait KMeansSupport {
   trait KMeansSupportFrame extends ConfigurationsPanelBuilder with Clustering {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
-    protected var clusteringResult = KMeansResult.empty
+    protected lazy val clusteringResult = Var(KMeansResult.empty)
     protected var initialNClusters: Int
 
 
@@ -45,7 +45,7 @@ trait KMeansSupport {
 
       def setResult: (KMeansResult) => Unit = {
         res =>
-          clusteringResult = res
+          clusteringResult set res
           drawClusterCenters()
       }
 
@@ -197,7 +197,7 @@ trait KMeansSupport {
       // draw
 
       def drawClusterCenters(): Unit  = {
-        affectImageMat(img => clusteringResult.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
+        affectImageMat(img => clusteringResult.get.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
         repaintImage()
       }
 

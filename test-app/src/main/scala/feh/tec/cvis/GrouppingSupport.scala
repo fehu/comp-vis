@@ -2,6 +2,7 @@ package feh.tec.cvis
 
 import java.awt.Color
 
+import feh.dsl.swing2.Var
 import feh.tec.cvis.common.Drawing._
 import feh.tec.cvis.common.Helper.PointNumericImplicits._
 import feh.tec.cvis.common.Helper._
@@ -19,11 +20,11 @@ trait GrouppingSupport {
   trait GrouppingSupportFrame extends ConfigurationsPanelBuilder {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
-    protected var groupsCentersWithPoints = List.empty[(Point, Set[Point])]
-    
+    protected lazy val groupsCentersWithPoints: Var[List[(Point, Set[Point])]] = Var(Nil)
+
     trait GroupingPanel
       extends SimpleVerticalPanel
-      with PanelExec[List[((Int, Int), Double)], List[(Point, Set[Point])]]
+      with PanelExec[List[Point], List[(Point, Set[Point])]]
       with ConfigBuildHelperPanel
     {
       type Params = Double // max in-cluster distance
@@ -33,7 +34,7 @@ trait GrouppingSupport {
       def getParams() = maxPairToPairInClusterDistance
 
       def setResult = v => {
-        groupsCentersWithPoints = v
+        groupsCentersWithPoints set v
         drawGroupsCenters()
       }
       def classTag = scala.reflect.classTag[List[(Point, Set[Point])]]
@@ -53,20 +54,25 @@ trait GrouppingSupport {
 
       protected def throwIfInterrupted() = if(interrupted_?) throw Interrupted
 
-      def runner = Runner{
+      lazy val runner = Runner{
                            nextStep =>
-                             maxDist =>
-                               hFiltered =>
-                                 val centers = hFiltered.map(_._1: Point)
-                                 val neighbouringMap =(
-                                                        for{
-                                                          point   <- centers
-                                                          another <- centers
-                                                          if another != point
-                                                          dist = point.distance[EuclideanDistance](another)
-                                                          if dist <= maxDist
-                                                        } yield point -> another
-                                                        ).groupBy(_._1)
+                             maxDist: Params =>
+                               centers: List[Point] =>
+                                 println("centers.size = " + centers.size)
+
+                                 val neighbouringMap=(
+                                                       centers flatMap {
+                                                         point =>
+                                                           val pts = for{
+                                                             another <- centers
+                                                             if another != point
+                                                             dist = point.distance[EuclideanDistance](another)
+                                                             if dist <= maxDist * 2
+                                                           } yield point -> another
+
+                                                           if(pts.isEmpty) List(point -> point) else pts
+                                                     }
+                                                     ).groupBy(_._1)
                                                       .mapValues(_.map(_._2))
 
                                  val g = mutable.Buffer.empty[mutable.HashSet[Point]]
@@ -86,7 +92,7 @@ trait GrouppingSupport {
                          }
 
       def drawGroupsCenters()  = {
-        affectImageMat(img => groupsCentersWithPoints.foreach(p => img.draw.circle(p._1.swap, 5, Color.green)))
+        affectImageMat(img => groupsCentersWithPoints.get.foreach{ p => img.draw.circle(p._1.swap, maxPairToPairInClusterDistance.toInt, Color.green) })
         repaintImage()
       }
 
