@@ -7,7 +7,7 @@ import feh.dsl.swing2.Var
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import feh.tec.cvis.{GrouppingSupport, HarrisSupport, KMeansSupport}
+import feh.tec.cvis.{GroupingSupport, HarrisSupport, KMeansSupport}
 import org.opencv.core._
 import feh.util._
 
@@ -16,7 +16,7 @@ import scala.swing.Swing._
 object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) 
   with HarrisSupport 
   with KMeansSupport
-  with GrouppingSupport
+  with GroupingSupport
   with Drawing
 {
 
@@ -32,7 +32,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
       with FrameExec
       with HarrisSupportFrame
       with KMeansSupportFrame
-      with GrouppingSupportFrame
+      with GroupingSupportFrame
       with CornerDetection
       with MatSupport
     {

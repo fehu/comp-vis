@@ -14,10 +14,10 @@ import org.opencv.core.Point
 
 import scala.collection.mutable
 
-trait GrouppingSupport {
+trait GroupingSupport {
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
 
-  trait GrouppingSupportFrame extends ConfigurationsPanelBuilder {
+  trait GroupingSupportFrame extends ConfigurationsPanelBuilder {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
     protected lazy val groupsCentersWithPoints: Var[List[(Point, Set[Point])]] = Var(Nil)
