@@ -2,6 +2,9 @@ package feh.tec.cvis
 
 import java.awt.Color
 
+import feh.dsl.swing.swing.Spinner
+import feh.dsl.swing2.ComponentExt._
+import feh.dsl.swing2.{Control, Var}
 import feh.tec.cvis.common.Drawing._
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common.describe.ArgModifier.MinCap
@@ -10,9 +13,9 @@ import feh.tec.cvis.common.{Clustering, TerminationCriteria}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._
-import org.opencv.core.{CvType, Mat}
+import org.opencv.core.{CvType, Mat, Point}
 
-import scala.swing.Dialog
+import scala.swing.{CheckBox, Component, Dialog}
 
 
 trait KMeansSupport {
@@ -46,6 +49,7 @@ trait KMeansSupport {
           drawClusterCenters()
       }
 
+      def getInitialLabels: Var[Seq[Set[Point]]]
 
       // configurable vars
 
@@ -60,6 +64,8 @@ trait KMeansSupport {
       var centersInitialPolicy: CentersPolicy = CentersPolicy.Random
 
       var targetCompactness = 1e4
+
+      lazy val useInitialLabels = Var(false)
 
       def criteria = TerminationCriteria(criteriaMaxCount, criteriaEpsilon)
 
@@ -95,6 +101,34 @@ trait KMeansSupport {
       , (mkSmallPanel("criteriaEpsilon")(Seq(criteriaEpsilonControl._2, criteriaEpsilonControl._1))) -> "criteriaEpsilon"
       )
 
+      lazy val useInitialLabelsControl = Control(useInitialLabels, new CheckBox("use grouping results as k-means initial labels"){
+        this.lock()
+
+        getInitialLabels.onChange{
+          pts =>
+            val n = pts.length
+            val b = n != 0
+
+            this.enabled = b
+            useInitialLabels set false
+//            if(!b) {
+//              useInitialLabels.set(b)
+//              initialNClustersControl._1.component.asInstanceOf[Spinner[Int]].value = pts.length
+//              initialNClustersControl._1.component.enabled = true
+//              centersInitialPolicyControl._1.component.enabled = true
+//        }
+                                 }
+
+      }) $$ {
+        _.onChange = {
+          b =>
+            println("onChange " + b)
+            initialNClustersControl._1.component.asInstanceOf[Spinner[Int]].value = initialNClusters
+            initialNClustersControl._1.component.enabled = !b
+            centersInitialPolicyControl._1.component.enabled = !b
+        }
+      }
+
       lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
           "initialNClusters"    -> initialNClustersControl
         , "nClustersStep"       -> nClustersStepControl
@@ -105,19 +139,32 @@ trait KMeansSupport {
         , "targetCompactness"   -> targetCompactnessControl
       )
 
+
       // running
+
+      override lazy val elems: Seq[(String, Seq[Component])] = Seq(
+        "useInitialLabels" -> Seq(useInitialLabelsControl.component)
+      ) ++ mkElems
 
       lazy val runner = RecursiveRunner[Int, Unit, List[((Int, Int), Double)], KMeansResult]{
         _ => iPoints =>
           if(iPoints.length >= initialNClusters){
             val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
 
-            val best = new Mat()
-            println("new best")
+            val best =
+              if(useInitialLabels.get){
+
+                val groups = getInitialLabels.get.zipWithIndex
+                val labels = iPoints.map{ case ((i, j), _) => groups.find(_._1.contains(i -> j)).get._2 }
+
+                new Mat(iPoints.length, 1, CvType.CV_32SC1) $$ {_.put(0, 0, labels.toArray)}
+              }
+              else new Mat()
+
+
             def centersPolicy = if(best.empty()) centersInitialPolicy
-            else CentersPolicy.InitialLabels
+                                else CentersPolicy.InitialLabels
             def kMeans(nClusters: Int) = {
-              println("kMeans")
               kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
             }
 
@@ -139,7 +186,7 @@ trait KMeansSupport {
                                messageType = Dialog.Message.Warning)
             nClust => scala.Right(KMeansResult.empty)
           }
-      }.runner( initial = initialNClusters
+      }.runner( initial = if(useInitialLabels.get) getInitialLabels.get.length else initialNClusters
               , maxTries = nClustersMaxTries
               , err = s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries")
 

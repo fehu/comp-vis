@@ -423,7 +423,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
         Future{ panelExec(currentExec) }.onComplete{
          res =>
-           println("exec complete")
            tabs.tryUnlock()
            tabs.tryUpdate()
            unlockForm()
@@ -433,7 +432,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
              case Failure(Interrupted) =>
              case Failure(thr) =>
                thr.printStackTrace()
-               println("error dialog")
+               onError.foreach(_(thr))
                Dialog.showMessage(parent = frame,
                                   message = thr.toString,
                                   title = "Error",
@@ -443,6 +442,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
            }
        }
       }
+
+      var onError: List[Throwable => Unit] = Nil
 
       def abortAction() = interrupt()
 

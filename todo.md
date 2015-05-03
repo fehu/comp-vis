@@ -8,4 +8,4 @@
 - [ ] max interest point cap
 - [ ] filter intersecting clusters
 - [ ] move both images simultaneously images by dragging
-- [ ] option to use grouping results as starting points for k-means
+- [x] option to use grouping results as starting points for k-means

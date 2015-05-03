@@ -1,14 +1,16 @@
 package feh.tec.cvis.gui.configurations
 
 import javax.swing.SpinnerNumberModel
+
 import feh.dsl.swing.AbstractGUI
 import feh.dsl.swing.util.AwtUtils
-import feh.tec.cvis.common.describe.{ArgModifier, ArgDescriptor}
-import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
+import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.gui.{GenericConfigurationGUI, GenericSimpleAppFrameImplementation}
 import feh.util._
-import scala.math.Numeric.{BigDecimalIsFractional, FloatIsFractional, DoubleIsFractional, IntIsIntegral}
+
+import scala.math.Numeric.{BigDecimalIsFractional, DoubleIsFractional, FloatIsFractional, IntIsIntegral}
 import scala.reflect.ClassTag
-import scala.swing.{Component, Alignment}
+import scala.swing.{Alignment, Component}
 
 trait ConfigBuildHelper extends GenericConfigurationGUI {
   gui: AbstractGUI with GenericSimpleAppFrameImplementation =>
@@ -22,8 +24,10 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
       def formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))]
 
 
-      lazy val elems: Seq[(String, Seq[Component])] =
+      protected def mkElems: Seq[(String, Seq[Component])] =
         formBuilders.mapVals{ case (c, label) => label.component :: c.component :: Nil }
+
+      lazy val elems = mkElems
 
 
 
@@ -36,6 +40,7 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
         }
 
         import num._
+
         import Ordered._
 
         lazy val maxOpt = caps.collectFirst{ case ArgModifier.MaxCap(mx) => mx }

@@ -1,10 +1,11 @@
 package feh.tec.cvis.common
 
-import org.opencv.core._
 import feh.util._
-import scala.math.Numeric.{FloatIsFractional, IntIsIntegral, DoubleIsFractional}
-import scala.reflect.ClassTag
+import org.opencv.core._
+
 import scala.language.implicitConversions
+import scala.math.Numeric.{DoubleIsFractional, FloatIsFractional, IntIsIntegral}
+import scala.reflect.ClassTag
 
 object Helper{
   type Array2D[T] = Array[Array[T]]
@@ -55,6 +56,11 @@ object Helper{
 
     // C++: void Mat::convertTo(Mat& m, int rtype, double alpha = 1, double beta = 0)
     def convert(rtype: Int, alpha: Double = 1, beta: Double = 0) = withMat(_ $$ (mat.convertTo(_, rtype, alpha, beta)))
+
+    def asString = mat
+                   .map((_,_) => _.mkString("[", ",", "]"))
+                   .map(_.mkString("[", ", ", "]"))
+                   .mkString("[\n\t", "\n\t", "\n]")
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){
@@ -63,7 +69,7 @@ object Helper{
 
     def size = rows * cols
 
-    def map[R: ClassTag](f: (Int, Int) => T => R): Array2D[R] = {
+    def mapWithKeys[R: ClassTag](f: (Int, Int) => T => R): Array2D[R] = {
       val res = Array.ofDim[R](rows, cols)
       for{
         i <- 0 until rows
@@ -135,6 +141,10 @@ object Helper{
 //    def +(p2: Point): Point = new Point(p.x + p2.x, p.y + p2.y)
 //    def -(p2: Point): Point = new Point(p.x - p2.x, p.y - p2.y)
     def pair: (Double, Double) = p
+  }
+
+  implicit class PointsWrapper(ps: Seq[Point]){
+    def toMat = new MatOfPoint(ps: _*)
   }
 
   trait DistanceMeasure{

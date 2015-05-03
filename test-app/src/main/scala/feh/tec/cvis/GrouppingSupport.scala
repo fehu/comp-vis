@@ -19,11 +19,11 @@ trait GrouppingSupport {
   trait GrouppingSupportFrame extends ConfigurationsPanelBuilder {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
-    protected var groupsCentersWithCounts = List.empty[(Point, Int)]
+    protected var groupsCentersWithPoints = List.empty[(Point, Set[Point])]
     
     trait GroupingPanel
       extends SimpleVerticalPanel
-      with PanelExec[List[((Int, Int), Double)], List[(Point, Int)]]
+      with PanelExec[List[((Int, Int), Double)], List[(Point, Set[Point])]]
       with ConfigBuildHelperPanel
     {
       type Params = Double // max in-cluster distance
@@ -33,10 +33,10 @@ trait GrouppingSupport {
       def getParams() = maxPairToPairInClusterDistance
 
       def setResult = v => {
-        groupsCentersWithCounts = v
+        groupsCentersWithPoints = v
         drawGroupsCenters()
       }
-      def classTag = scala.reflect.classTag[List[(Point, Int)]]
+      def classTag = scala.reflect.classTag[List[(Point, Set[Point])]]
 
 
 
@@ -80,13 +80,13 @@ trait GrouppingSupport {
                                    grouped <- g
                                    n = grouped.size
                                    center = grouped.sum / (n -> n)
-                                 } yield center -> n
+                                 } yield center -> grouped.toSet
 
                                  cCenters.toList
                          }
 
       def drawGroupsCenters()  = {
-        affectImageMat(img => groupsCentersWithCounts.foreach(p => img.draw.circle(p._1.swap, 5, Color.green)))
+        affectImageMat(img => groupsCentersWithPoints.foreach(p => img.draw.circle(p._1.swap, 5, Color.green)))
         repaintImage()
       }
 
