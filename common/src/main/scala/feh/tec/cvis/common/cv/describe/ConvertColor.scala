@@ -1,4 +1,4 @@
-package feh.tec.cvis.common.describe
+package feh.tec.cvis.common.cv.describe
 
 import feh.tec.cvis.common.ColorConversion
 import feh.tec.cvis.common.cv.{ColorConversion, ColorConverting}

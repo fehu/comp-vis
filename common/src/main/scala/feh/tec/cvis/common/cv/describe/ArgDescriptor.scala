@@ -1,4 +1,4 @@
-package feh.tec.cvis.common.describe
+package feh.tec.cvis.common.cv.describe
 
 import scala.reflect.ClassTag
 

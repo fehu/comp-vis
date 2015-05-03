@@ -8,8 +8,8 @@ import feh.dsl.swing2.{Control, Var}
 import feh.tec.cvis.common.cv.{TerminationCriteria, Clustering, Helper, Drawing}
 import Drawing._
 import Helper._
-import feh.tec.cvis.common.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
+import feh.tec.cvis.common.cv.describe.{ArgDescriptor, ArgModifier}
 import feh.tec.cvis.common.TerminationCriteria
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper

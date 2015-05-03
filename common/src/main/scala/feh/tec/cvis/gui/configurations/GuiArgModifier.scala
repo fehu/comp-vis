@@ -1,6 +1,6 @@
 package feh.tec.cvis.gui.configurations
 
-import feh.tec.cvis.common.describe.ArgModifier
+import feh.tec.cvis.common.cv.describe.ArgModifier
 
 trait GuiArgModifier[T] extends ArgModifier[T]
 

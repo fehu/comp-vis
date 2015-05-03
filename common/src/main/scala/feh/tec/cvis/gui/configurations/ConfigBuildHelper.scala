@@ -4,7 +4,7 @@ import javax.swing.SpinnerNumberModel
 
 import feh.dsl.swing.AbstractGUI
 import feh.dsl.swing.util.AwtUtils
-import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.cv.describe.{ArgDescriptor, ArgModifier}
 import feh.tec.cvis.gui.{GenericConfigurationGUI, GenericSimpleAppFrameImplementation}
 import feh.util._
 

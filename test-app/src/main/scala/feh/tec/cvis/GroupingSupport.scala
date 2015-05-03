@@ -7,7 +7,7 @@ import feh.tec.cvis.common.cv.{Helper, Drawing}
 import Drawing._
 import Helper.PointNumericImplicits._
 import Helper._
-import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.cv.describe.{ArgDescriptor, ArgModifier}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._

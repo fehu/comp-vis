@@ -3,7 +3,7 @@ package feh.tec.cvis.gui.configurations
 import feh.dsl.swing.AbstractGUI
 import feh.tec.cvis.common.cv.{BufferedImageColor, ColorConversion, ColorConverting, ColorMode}
 import feh.tec.cvis.common.BufferedImageColor
-import feh.tec.cvis.common.describe.ConvertColor
+import feh.tec.cvis.common.cv.describe.ConvertColor
 import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
 import org.opencv.core.Mat
 
