@@ -1,21 +1,21 @@
 package feh.tec.cvis.testapp
 
-import java.awt.{Color, Dimension}
 import java.awt.image._
+import java.awt.{Color, Dimension}
 import javax.swing.SpinnerNumberModel
+
+import feh.tec.cvis.common.Drawing._
+import feh.tec.cvis.common.Helper.PointNumericImplicits._
 import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common._
-import feh.tec.cvis.common.describe.ArgModifier.MinCap
 import feh.tec.cvis.common.describe._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.gui.configurations.{GuiArgModifier, Harris}
 import feh.util._
 import org.opencv.core._
+
 import scala.collection.mutable
-import scala.swing.{Dialog, Component}
 import scala.swing.Swing._
-import Drawing._
-import PointNumericImplicits._
 
 object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with Harris{
 
@@ -33,7 +33,6 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       with CornerDetection
       with MatSupport
       with ColorConverting
-      with Clustering
     {
       frame =>
 
@@ -51,11 +50,12 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
       protected var filteredInterestPointsCount: Int = 0
       protected var initialNClusters: Int = 1
 
-      protected var clusterCentersAndWeight = List.empty[(Point, Double)]
+      protected var clusterCentersWithCounts = List.empty[(Point, Int)]
 
       lazy val configurations: Seq[(String, Config)] = Seq(
-        "harris"      -> HarrisPanel
-//        "clustering"  -> ClusteringPanel
+          "harris"      -> HarrisPanel
+        , "grouping"    -> GroupingPanel
+//        , "clustering"  -> ClusteringPanel
       )
 
       def calcInitialNClusters(c: Int) =  if      (c > 1000)  c / 100
@@ -169,45 +169,86 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) with
         }
       }
 
-//      List[((Int, Int), Double)]
+
+
+
+      object GroupingPanel
+        extends SimpleVerticalPanel
+        with PanelExec[List[((Int, Int), Double)], List[(Point, Int)]]
+        with ConfigBuildHelperPanel
+      {
+        type Params = Double // max in-cluster distance
+
+        def steps = 1
+
+        def getSrc = harrisFiltered
+        def getParams() = maxPairToPairInClusterDistance
+
+        def setResult = v => {
+          clusterCentersWithCounts = v
+          drawGroupsCenters()
+        }
+        def classTag = scala.reflect.classTag[List[(Point, Int)]]
+
+
+
+        object MaxPairToPairInClusterDistance extends ArgDescriptor[Double]("Max pair-to-pair in-cluster distance", null, ArgModifier.Positive)
+
+        protected var maxPairToPairInClusterDistance = 10d
+
+        lazy val maxPairToPairInClusterDistanceControl =
+          mkNumericControl(MaxPairToPairInClusterDistance)(maxPairToPairInClusterDistance, maxPairToPairInClusterDistance = _) |> fixPreferredSize
+
+        def formBuilders: Seq[(String, (TestHarris.AbstractDSLBuilder, TestHarris.DSLLabelBuilder[_]))] = Seq(
+          "maxPairToPairInClusterDistance" -> maxPairToPairInClusterDistanceControl
+        )
+
+        protected def throwIfInterrupted() = if(interrupted_?) throw Interrupted
+
+        def runner = Runner{
+          nextStep => 
+            maxDist => 
+              hFiltered =>
+                val centers = hFiltered.map(_._1: Point)
+                val neighbouringMap =(
+                  for{
+                    point   <- centers
+                    another <- centers
+                    if another != point
+                    dist = point.distance[EuclideanDistance](another)
+                    if dist <= maxDist
+                  } yield point -> another
+                ).groupBy(_._1)
+                 .mapValues(_.map(_._2))     
+                
+                val g = mutable.Buffer.empty[mutable.HashSet[Point]]
+
+                for ((point, neighbours) <- neighbouringMap)
+                  g.find(_ contains point)
+                   .map(_ ++= neighbours)
+                   .getOrElse(g += (new mutable.HashSet += point ++= neighbours))
+
+                val cCenters =  for {
+                  grouped <- g
+                  n = grouped.size
+                  center = grouped.sum / (n -> n)
+                } yield center -> n
+
+                cCenters.toList
+        }
+
+        def drawGroupsCenters()  = {
+          HarrisPanel.drawHarris()
+          affectImageMat(img => clusterCentersWithCounts.foreach(p => img.draw.circle(p._1.swap, 5, Color.green)))
+          repaintImage()
+        }
+
+      }
+
+
+
 
 
       frame.updateForms()
     }
-
-  /*
-          def drawClusterCenters()  = {
-          val centers = ???
-
-          affectImageMat(img => centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
-
-          val neighbouringMap =(
-            for{
-              point   <- centers
-              another <- centers
-              if another != point
-              dist = point.distance[EuclideanDistance](another)
-              if dist < 10
-            } yield point -> another
-          ).groupBy(_._1)
-           .mapValues(_.map(_._2))
-
-//          val (single, multiple) = neighbouringMap.partition(_._2.length < 2)
-
-          val groups = {
-            val g = mutable.Buffer.empty[mutable.HashSet[Point]] //++= neighbouringMap.keys
-
-            for( (point, neighbours) <- neighbouringMap )
-              g.find(_ contains point)
-               .map(_ ++= neighbours)
-               .getOrElse( g += (new mutable.HashSet += point ++= neighbours) )
-
-            val cCenters = for (grouped <- g) yield grouped.sum / (grouped.size -> grouped.size)
-
-            affectImageMat(img => cCenters.foreach(p => img.draw.circle(p.swap, 5, Color.green)))
-          }
-
-          repaintImage()
-        }
-   */
 }

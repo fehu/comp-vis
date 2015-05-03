@@ -2,6 +2,7 @@ package feh.tec.cvis.gui.configurations
 
 import javax.swing.SpinnerNumberModel
 import feh.dsl.swing.AbstractGUI
+import feh.dsl.swing.util.AwtUtils
 import feh.tec.cvis.common.describe.{ArgModifier, ArgDescriptor}
 import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
 import feh.util._
@@ -15,7 +16,7 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
   trait ConfigBuildHelperGUI extends super.GenericGUIFrame {
     frame: GuiFrame with FrameExec =>
 
-    trait ConfigBuildHelperPanel {
+    trait ConfigBuildHelperPanel extends AwtUtils{
       executable: GenericConfigurationPanel with PanelExec[_, _] =>
 
       def formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))]
@@ -105,6 +106,11 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
         (controlForSeq(domain, static = true).dropDownList(set)
                                              .withStringExtractor(asString)
         ,  mkControlLabel(descr))
+
+
+      def fixPreferredSize[B <: AbstractDSLBuilder]: ((B, DSLLabelBuilder[_])) => (B, DSLLabelBuilder[_]) = {
+        case (c, l) => c.affect(x => x.preferredSize = 200 -> x.preferredSize._2).asInstanceOf[B] -> l
+      }
 
     }
 
