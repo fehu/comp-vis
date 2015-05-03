@@ -1,10 +1,9 @@
 package feh.tec.cvis.gui.configurations
 
 import feh.dsl.swing.AbstractGUI
-import feh.tec.cvis.common.cv.{BufferedImageColor, ColorConversion, ColorConverting, ColorMode}
-import feh.tec.cvis.common.BufferedImageColor
 import feh.tec.cvis.common.cv.describe.ConvertColor
-import feh.tec.cvis.gui.{GenericSimpleAppFrameImplementation, GenericConfigurationGUI}
+import feh.tec.cvis.common.cv.{BufferedImageColor, ColorConversion, ColorConverting, ColorMode}
+import feh.tec.cvis.gui.{GenericConfigurationGUI, GenericSimpleAppFrameImplementation}
 import org.opencv.core.Mat
 
 trait ColorConversions extends GenericConfigurationGUI with ColorConverting{

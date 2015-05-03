@@ -3,6 +3,7 @@ package feh.tec.cvis.common.cv
 import feh.util._
 import org.opencv.core.{Core, Mat}
 import org.opencv.imgproc.Imgproc
+import feh.tec.cvis.common.cv.Helper._
 
 object CornerDetection extends CornerDetection
 

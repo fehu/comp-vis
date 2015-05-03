@@ -6,6 +6,10 @@ CommonSettings.settings
 
 libraryDependencies += "commons-io" % "commons-io" % "2.4" % "compile, runtime"
 
+libraryDependencies += "org.scalanlp" %% "breeze" % "0.11.2"
+
+
+
 
 AssemblySettings.settings
 

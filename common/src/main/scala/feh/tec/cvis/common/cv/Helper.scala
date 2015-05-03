@@ -61,6 +61,8 @@ object Helper{
                    .map((_,_) => _.mkString("[", ",", "]"))
                    .map(_.mkString("[", ", ", "]"))
                    .mkString("[\n\t", "\n\t", "\n]")
+
+    def as3DArray: Array2D[Array[Double]] = map((_, _) => identity)
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){
@@ -149,6 +151,8 @@ object Helper{
   trait DistanceMeasure{
     def dist(p1: Point, p2: Point): Double
   }
+
+  import PointNumericImplicits._
 
   type EuclideanDistance = EuclideanDistance.type
   implicit object EuclideanDistance extends DistanceMeasure{

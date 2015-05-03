@@ -1,10 +1,7 @@
 package feh.tec.cvis.common.cv.describe
 
-import feh.tec.cvis.common.ColorConversion
 import feh.tec.cvis.common.cv.{ColorConversion, ColorConverting}
 import org.opencv.core.Mat
-import org.opencv.imgproc.Imgproc
-import feh.util._
 
 /** Converts an image from one color space to another.
  *
