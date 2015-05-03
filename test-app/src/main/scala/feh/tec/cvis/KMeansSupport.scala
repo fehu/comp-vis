@@ -2,18 +2,17 @@ package feh.tec.cvis
 
 import java.awt.Color
 
-import feh.dsl.swing.util.AwtUtils
-import feh.tec.cvis.common.describe.{ArgModifier, ArgDescriptor}
+import feh.tec.cvis.common.Drawing._
+import feh.tec.cvis.common.Helper._
 import feh.tec.cvis.common.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.{Drawing, TerminationCriteria, Clustering}
+import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.{Clustering, TerminationCriteria}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._
-import feh.tec.cvis.common.Helper._
-import org.opencv.core.{Mat, CvType}
+import org.opencv.core.{CvType, Mat}
+
 import scala.swing.Dialog
-import scala.swing.Swing._
-import Drawing._
 
 
 trait KMeansSupport {
@@ -54,7 +53,7 @@ trait KMeansSupport {
       var nClustersMaxTries = 100
 
       def tpe: TerminationCriteria.Type = TerminationCriteria.Type.Both // todo both for now
-      var criteriaMaxCount: Int = 1000
+      var criteriaMaxCount: Int = 100
       var criteriaEpsilon: Double = 1e-3
 
       var attempts = 100
@@ -150,7 +149,7 @@ trait KMeansSupport {
 
       // draw
 
-      def drawClusterCenters()  = {
+      def drawClusterCenters(): Unit  = {
         affectImageMat(img => clusteringResult.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
         repaintImage()
       }
