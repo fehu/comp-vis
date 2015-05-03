@@ -1,4 +1,4 @@
-package feh.tec.cvis.testapp
+package feh.tec.cvis
 
 import java.awt.image._
 import java.awt.{Color, Dimension}
@@ -7,12 +7,11 @@ import feh.dsl.swing2.Var
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import feh.tec.cvis.{DescriptorsSupport, GroupingSupport, HarrisSupport, KMeansSupport}
 import org.opencv.core._
 
 import scala.swing.Swing._
 
-object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800) 
+object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 -> 800)
   with HarrisSupport 
   with KMeansSupport
   with GroupingSupport
