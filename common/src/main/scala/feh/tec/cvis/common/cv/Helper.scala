@@ -1,4 +1,4 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
 import feh.util._
 import org.opencv.core._
@@ -149,8 +149,6 @@ object Helper{
   trait DistanceMeasure{
     def dist(p1: Point, p2: Point): Double
   }
-
-  import feh.tec.cvis.common.Helper.PointNumericImplicits._
 
   type EuclideanDistance = EuclideanDistance.type
   implicit object EuclideanDistance extends DistanceMeasure{

@@ -3,9 +3,10 @@ package feh.tec.cvis
 import java.awt.Color
 import javax.swing.SpinnerNumberModel
 
-import feh.tec.cvis.common.Drawing._
-import feh.tec.cvis.common.Helper._
-import feh.tec.cvis.common.{ColorConversion, ColorConverting, ColorMode}
+import feh.tec.cvis.common.cv._
+import Drawing._
+import Helper._
+import feh.tec.cvis.common.ColorConversion
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.{ConfigBuildHelper, GuiArgModifier, Harris}
 import feh.util._

@@ -1,6 +1,7 @@
 package feh.tec.cvis.common.describe
 
-import feh.tec.cvis.common.{ColorConversion, ColorConverting, ColorMode}
+import feh.tec.cvis.common.ColorConversion
+import feh.tec.cvis.common.cv.{ColorConversion, ColorConverting}
 import org.opencv.core.Mat
 import org.opencv.imgproc.Imgproc
 import feh.util._

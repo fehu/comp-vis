@@ -1,8 +1,9 @@
 package feh.tec.cvis.gui.configurations
 
 import feh.dsl.swing.AbstractGUI
+import feh.tec.cvis.common.cv.{CornerDetection, BorderExtrapolationMethod}
 import feh.tec.cvis.common.describe.Harris
-import feh.tec.cvis.common.{BorderExtrapolationMethod, CornerDetection}
+import feh.tec.cvis.common.CornerDetection
 import feh.tec.cvis.gui.{GenericConfigurationGUI, GenericSimpleAppFrameImplementation}
 import org.opencv.core.Mat
 

@@ -1,9 +1,10 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
 import java.awt.Color
 
 import org.opencv.core._
 import org.opencv.imgproc.Imgproc
+
 import scala.language.implicitConversions
 
 object Drawing extends Drawing

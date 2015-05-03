@@ -1,9 +1,10 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
 import java.awt.image.BufferedImage
+
+import feh.util._
 import org.opencv.core.Mat
 import org.opencv.imgproc.Imgproc
-import feh.util._
 
 
 abstract class ColorMode

@@ -5,11 +5,12 @@ import java.awt.Color
 import feh.dsl.swing.swing.Spinner
 import feh.dsl.swing2.ComponentExt._
 import feh.dsl.swing2.{Control, Var}
-import feh.tec.cvis.common.Drawing._
-import feh.tec.cvis.common.Helper._
+import feh.tec.cvis.common.cv.{TerminationCriteria, Clustering, Helper, Drawing}
+import Drawing._
+import Helper._
 import feh.tec.cvis.common.describe.ArgModifier.MinCap
 import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
-import feh.tec.cvis.common.{Clustering, TerminationCriteria}
+import feh.tec.cvis.common.TerminationCriteria
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._

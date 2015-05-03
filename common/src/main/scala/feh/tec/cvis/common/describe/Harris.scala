@@ -1,12 +1,13 @@
 package feh.tec.cvis.common.describe
 
-import feh.tec.cvis.common.{CornerDetection, BorderExtrapolationMethod}
+import feh.tec.cvis.common.cv.{BorderExtrapolationMethod, CornerDetection}
+import feh.tec.cvis.common.CornerDetection
 import feh.tec.cvis.common.describe.ArgModifier._
 import org.opencv.core.Mat
 
 /** Harris edge detector arguments descriptions
  *
- *  @see [[feh.tec.cvis.common.CornerDetection.cornerHarris]] (in common/src/main/scala/feh/tec/cvis/common/ScalaStyle.scala)
+ *  @see [[CornerDetection.cornerHarris]] (in common/src/main/scala/feh/tec/cvis/common/ScalaStyle.scala)
  */
 
 object Harris {

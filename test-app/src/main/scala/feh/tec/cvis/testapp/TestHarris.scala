@@ -4,7 +4,8 @@ import java.awt.{Color, Dimension}
 import java.awt.image._
 
 import feh.dsl.swing2.Var
-import feh.tec.cvis.common.Helper._
+import feh.tec.cvis.common.cv.{Drawing, CV, CornerDetection, Helper}
+import Helper._
 import feh.tec.cvis.common._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import feh.tec.cvis.{GroupingSupport, HarrisSupport, KMeansSupport}

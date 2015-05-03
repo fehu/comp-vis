@@ -10,7 +10,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 
 import feh.dsl.swing2.{Var, Monitor, Control}
 import feh.dsl.swing2.ComponentExt._
-import feh.tec.cvis.common.BufferedImageColor
+import feh.tec.cvis.common.cv.BufferedImageColor
 import feh.tec.cvis.gui.FileDrop._
 import feh.util._
 import feh.util.file._

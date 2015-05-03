@@ -1,4 +1,4 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
 sealed abstract class BorderExtrapolationMethod(val value: Int, val asString: String)
 

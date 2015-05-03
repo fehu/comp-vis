@@ -1,8 +1,7 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
-import org.opencv.core.{Point, TermCriteria, Mat, Core}
-import Helper._
-import feh.util._
+import feh.tec.cvis.common.cv.Helper._
+import org.opencv.core.{Core, Mat, Point}
 
 trait Clustering {
 

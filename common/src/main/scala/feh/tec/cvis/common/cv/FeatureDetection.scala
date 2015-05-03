@@ -1,9 +1,10 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
-import org.opencv.core.{MatOfKeyPoint, Mat}
-import org.opencv.features2d.FeatureDetector
-import scala.collection.convert.decorateAll._
 import feh.util._
+import org.opencv.core.{Mat, MatOfKeyPoint}
+import org.opencv.features2d.FeatureDetector
+
+import scala.collection.convert.decorateAll._
 
 object FeatureDetection extends FeatureDetection
 

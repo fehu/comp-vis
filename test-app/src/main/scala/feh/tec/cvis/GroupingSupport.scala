@@ -3,9 +3,10 @@ package feh.tec.cvis
 import java.awt.Color
 
 import feh.dsl.swing2.Var
-import feh.tec.cvis.common.Drawing._
-import feh.tec.cvis.common.Helper.PointNumericImplicits._
-import feh.tec.cvis.common.Helper._
+import feh.tec.cvis.common.cv.{Helper, Drawing}
+import Drawing._
+import Helper.PointNumericImplicits._
+import Helper._
 import feh.tec.cvis.common.describe.{ArgDescriptor, ArgModifier}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper

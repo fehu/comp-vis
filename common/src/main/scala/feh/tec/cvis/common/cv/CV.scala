@@ -1,8 +1,9 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
 import feh.util.Path
 import feh.util.file._
 import org.opencv.core.Core
+
 import scala.collection.convert.decorateAsScala._
 
 object CV {

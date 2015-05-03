@@ -1,6 +1,8 @@
-package feh.tec.cvis.common
+package feh.tec.cvis.common.cv
 
+import feh.tec.cvis.common.cv
 import org.opencv.core.TermCriteria
+
 import scala.language.implicitConversions
 
 /** Wrapper for [[org.opencv.core.TermCriteria]]
@@ -52,7 +54,7 @@ import scala.language.implicitConversions
  * structure may be fully initialized using the advanced variant of the
  * constructor.
  * </code></p>
- * @param tpe [[feh.tec.cvis.common.TerminationCriteria.Type]]
+ * @param tpe [[cv.TerminationCriteria.Type]]
  * @param maxCount the maximum number of iterations/elements.
  * @param epsilon the desired accuracy.
  * @see <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#termcriteria">org.opencv.core.TermCriteria</a>
