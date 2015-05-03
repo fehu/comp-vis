@@ -63,6 +63,12 @@ object Helper{
                    .mkString("[\n\t", "\n\t", "\n]")
 
     def as3DArray: Array2D[Array[Double]] = map((_, _) => identity)
+
+    def normalize = withMat{
+      dist =>
+        Core.normalize(mat, dist)
+        dist
+    }
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){

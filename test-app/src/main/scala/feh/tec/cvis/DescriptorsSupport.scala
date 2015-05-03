@@ -1,11 +1,15 @@
 package feh.tec.cvis
 
+import java.text.DecimalFormat
+import javax.swing.SwingConstants
+import javax.swing.table.{DefaultTableCellRenderer, DefaultTableModel}
+
 import breeze.stats
 import breeze.stats.DescriptiveStats
-import feh.dsl.swing2.Var
+import feh.dsl.swing2.{Monitor, Var}
 import feh.tec.cvis.common.AreaDescriptor.{HasStatistics, SingleChannel}
 import feh.tec.cvis.common.ChannelDescriptor.Statistics
-import feh.tec.cvis.common.cv.Helper.{Array2D, MatWrapper}
+import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.describe.ArgDescriptor
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
 import feh.tec.cvis.common.{AreaDescriptor, ChannelDescriptor, ImageDescriptor}
@@ -15,7 +19,8 @@ import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.util._
 import org.opencv.core._
 
-import scala.swing.event.MouseClicked
+import scala.swing.{Component, ScrollPane, Table}
+
 
 trait DescriptorsSupport {
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
@@ -25,20 +30,20 @@ trait DescriptorsSupport {
   trait DescriptorsSupportFrame extends ConfigurationsPanelBuilder with MatSupport {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
-    lazy val imageDescriptor: Var[Option[IDescriptor]] = Var(None)
+    lazy val imageDescriptors: Var[Map[Point, ADescriptor]] = Var(Map())
 
     trait DescriptorsPanel
       extends SimpleVerticalPanel
-      with PanelExec[(Mat, Set[Point]), IDescriptor]
+      with PanelExec[(Mat, Set[Point]), Seq[(Point, ADescriptor)]]
       with ConfigBuildHelperPanel
     {
       type Params = (Int, String) // Descriptor side size, image name
 
-      def steps: Int = ???
+      def steps = 1
 
-      def classTag    = scala.reflect.classTag[IDescriptor]
+      def classTag    = scala.reflect.classTag[Seq[(Point, ADescriptor)]]
       def getParams() = descriptorSideSize.get -> imageName.get
-      def setResult   = Option(_) |> imageDescriptor.set
+      def setResult   = imageDescriptors set _.toMap
 
 
       lazy val descriptorSideSize     = Var(1)
@@ -51,31 +56,60 @@ trait DescriptorsSupport {
 
       lazy val descriptorSideSizeControl = mkNumericControl(DescriptorSideSize)(descriptorSideSize.get, descriptorSideSize.set)
 
-      lazy val imageNameControl = controlFor(imageName.get)(imageName.set).textForm
+//      lazy val imageNameControl = controlFor(imageName.get)(imageName.set).textForm
       
-      lazy val descriptorGroupsInfo = monitorFor(imageDescriptor.get.map(_.pointsGroups) getOrElse Map()) // todo: rewrite
-                                        .list
-                                        .affect(l => l.listenTo(l.mouse.clicks))
-                                        .affect(l => l.reactions +=  {
-                                                                        case MouseClicked(`l`, p, _, 2, _) =>
-                                                                          val ind = l.peer.locationToIndex(p)
-                                                                          showGroupInfo( l.peer.getModel.getElementAt(ind) )
-                                                                      })
-        //Control(imageDescriptor, new Label)
+//      lazy val descriptorGroupsInfo = monitorFor(imageDescriptor.get.map(_.interestPoints) getOrElse Map()) // todo: rewrite
+//                                        .list
+//                                        .affect(l => l.listenTo(l.mouse.clicks))
+//                                        .affect(l => l.reactions +=  {
+//                                                                        case MouseClicked(`l`, p, _, 2, _) =>
+//                                                                          val ind = l.peer.locationToIndex(p)
+//                                                                          showPointInfo( l.peer.getModel.getElementAt(ind) )
+//                                                                      })
+      private def descriptorGroupsInfoModel(data: Seq[(Point, ADescriptor)]) ={
+        val names = "Point" :: "Mean" :: "StDev" :: "Range" :: "IQR" :: Nil
+        val dArr = data.toArray.map{
+          case (p, descr) => Array[AnyRef](p.pairInt,
+                                           Double.box(descr.channel.mean),
+                                           Double.box(descr.channel.std),
+                                           Double.box(descr.channel.range),
+                                           Double.box(descr.channel.iqr))
+        }
+        new DefaultTableModel(dArr, names.toArray[AnyRef]){
+          override def isCellEditable(row: Int, column: Int) = false
+        }
+      }
 
-      def showGroupInfo(group: (Double, Set[Point]))
+      lazy val descriptorGroupsInfo = Monitor.custom(imageDescriptors, new Table){
+        c =>
+          c.model = descriptorGroupsInfoModel(Nil)
 
-      def formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
+          lazy val formatter = new DecimalFormat("0.###E0")
+
+          c.peer.setDefaultRenderer(classOf[java.lang.Double], new DefaultTableCellRenderer.UIResource{
+            setHorizontalAlignment(SwingConstants.RIGHT)
+            override def setValue(value: AnyRef): Unit = setText(Option(value) map formatter.format getOrElse "")
+          })
+      }{
+        c =>
+          t =>
+            c.model = descriptorGroupsInfoModel(t.toSeq)
+      }
+
+//      def showPointInfo(group: (Point, ADescriptor))
+
+      lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
         "descriptorSideSize"    -> descriptorSideSizeControl
-      , "imageName"             -> (imageNameControl -> label("Image name"))
-      , "descriptorGroupsInfo"  -> (descriptorGroupsInfo -> label("Descriptor Groups"))
+//      , "imageName"             -> (imageNameControl -> label("Image name"))
+//      , "descriptorGroupsInfo"  -> (descriptorGroupsInfo.component -> label("Descriptor Groups"))
       )
 
 
-      type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics{
-        type Channel = ChannelDescriptor with Statistics
-      }
+      override lazy val elems: Seq[(String, Seq[Component])] = mkElems ++ Seq(
+        "descriptorGroupsInfo" -> Seq(new ScrollPane(descriptorGroupsInfo.component))
+      )
 
+      // todo: bounding conditions!
       def mkDescriptor(img: Mat, sideSize: Int)(p: Point): ADescriptor =
         new AreaDescriptor with SingleChannel with HasStatistics{
           type Channel = ChannelDescriptor with Statistics
@@ -85,7 +119,7 @@ trait DescriptorsSupport {
           lazy val channel: Channel = new ChannelDescriptor with Statistics{
             private val n = (sideSize - 1).ensuring(_ % 2 == 0, "sideSize must be odd") / 2
 
-            lazy val subMat = img.submat(p.y.toInt-n, p.y.toInt+n, p.x.toInt-n, p.x.toInt+n)
+            lazy val subMat = img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n)
 
             lazy val data: Array[Double] = subMat.toArray
             lazy val byRows: Array2D[Double] = subMat    .byRow(_ => _.toArray[Double]).toArray
@@ -111,26 +145,25 @@ trait DescriptorsSupport {
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def runner: Runner[Params, (Mat, Set[Point]), IDescriptor] = Runner(
+      def runner: Runner[Params, (Mat, Set[Point]), Seq[(Point, ADescriptor)]] = Runner(
       nextStep => {
         case (sideSize, imgName) =>
         {
-          case (img, iPoints) =>
-            val pts = iPoints.zipMap(mkDescriptor(img /* todo: normalize */, sideSize)).toMap
+          case (img, iPoints) => iPoints.toSeq.zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
 
-            new ImageDescriptor with ImageDescriptor.BetterSearch {
-              type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics{
-                                    type Channel = ChannelDescriptor with Statistics
-                                  }
 
-              def name = imgName
-
-              lazy val originalImage: Array[Byte] = toMat(frame.originalImage).convert(CvType.CV_8U).toArray
-
-              def interestPoints: Map[Point, ADescriptor] = pts
-
-              lazy val pointsGroups: Map[PointsGroupDescriptor, Set[Point]] = groupDescription(pts)
-            } : IDescriptor
+//            new ImageDescriptor  {
+//              type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics{
+//                                    type Channel = ChannelDescriptor with Statistics
+//                                  }
+//
+//              def name = imgName
+//
+//              lazy val originalImage: Array[Byte] = toMat(frame.originalImage).convert(CvType.CV_8U).toArray
+//
+//              def interestPoints: Map[Point, ADescriptor] = pts
+//
+//            } : IDescriptor
         }
       }
       )
@@ -140,9 +173,11 @@ trait DescriptorsSupport {
 }
 
 object DescriptorsSupport{
-  type IDescriptor = ImageDescriptor with ImageDescriptor.BetterSearch {
-                        type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics {
-                                              type Channel = ChannelDescriptor with Statistics
-                                            }
+  type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics {
+                        type Channel = ChannelDescriptor with Statistics
                       }
+
+  type IDescriptor = ImageDescriptor {
+    type ADescriptor = DescriptorsSupport.ADescriptor
+  }
 }

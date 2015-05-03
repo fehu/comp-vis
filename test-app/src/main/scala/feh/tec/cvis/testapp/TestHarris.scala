@@ -1,16 +1,14 @@
 package feh.tec.cvis.testapp
 
-import java.awt.{Color, Dimension}
 import java.awt.image._
+import java.awt.{Color, Dimension}
 
 import feh.dsl.swing2.Var
-import feh.tec.cvis.common.cv.{Drawing, CV, CornerDetection, Helper}
-import Helper._
-import feh.tec.cvis.common._
+import feh.tec.cvis.common.cv.Helper._
+import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import feh.tec.cvis.{GroupingSupport, HarrisSupport, KMeansSupport}
+import feh.tec.cvis.{DescriptorsSupport, GroupingSupport, HarrisSupport, KMeansSupport}
 import org.opencv.core._
-import feh.util._
 
 import scala.swing.Swing._
 
@@ -18,6 +16,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
   with HarrisSupport 
   with KMeansSupport
   with GroupingSupport
+  with DescriptorsSupport
   with Drawing
 {
 
@@ -34,6 +33,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
       with HarrisSupportFrame
       with KMeansSupportFrame
       with GroupingSupportFrame
+      with DescriptorsSupportFrame
       with CornerDetection
       with MatSupport
     {
@@ -41,7 +41,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
 
 //      LayoutDebug = true
 
-      protected val distinctInterestPoints: Var[Set[Point]] = Var(Set())
+      protected val distinctInterestPoints: Var[Set[(Int, Int)]] = Var(Set())
 
       type Config = SimpleVerticalPanel with PanelExec[_, _]
 
@@ -51,6 +51,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
+        , "describe"    -> DescriptorsPanel
       )
 
 
@@ -131,7 +132,7 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
         }
 
         override def setResult: (List[(Point, Set[Point])]) => Unit = v => {
-          distinctInterestPoints set v.map(_._1).toSet
+          distinctInterestPoints set v.map(_._1.pairInt).toSet
           drawGroupsCenters()
         }
 
@@ -144,7 +145,11 @@ object TestHarris extends DefaultApp("harris-test", 300 -> 300, 600 -> 800)
       }
 
 
+      object DescriptorsPanel extends DescriptorsPanel{
+        def getSrc: (Mat, Set[Point]) = originalGray -> distinctInterestPoints.get.map(x => x: Point)
 
+//        def showPointInfo(group: (Point, ADescriptor)) = Dialog.showMessage(frame, "todo")
+      }
 
 
 

@@ -59,7 +59,6 @@ trait GroupingSupport {
                            nextStep =>
                              maxDist: Params =>
                                centers: List[Point] =>
-                                 println("centers.size = " + centers.size)
 
                                  val neighbouringMap=(
                                                        centers flatMap {

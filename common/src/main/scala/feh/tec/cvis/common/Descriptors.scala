@@ -19,6 +19,7 @@ trait ImageDescriptor {
 
 object ImageDescriptor{
 
+  @deprecated
   trait BetterSearch{
     self: ImageDescriptor =>
 
