@@ -119,7 +119,7 @@ trait DescriptorsSupport {
           lazy val channel: Channel = new ChannelDescriptor with Statistics{
             private val n = (sideSize - 1).ensuring(_ % 2 == 0, "sideSize must be odd") / 2
 
-            lazy val subMat = img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n)
+            lazy val subMat = if(n > 1) img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n) else new MatOfDouble(img.get(p.x.toInt, p.y.toInt): _*)
 
             lazy val data: Array[Double] = subMat.toArray
             lazy val byRows: Array2D[Double] = subMat    .byRow(_ => _.toArray[Double]).toArray
@@ -131,13 +131,6 @@ trait DescriptorsSupport {
             lazy val range  = data.max - data.min
             lazy val iqr    = DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
           }
-
-  //        lazy val (mean, std) = {
-  //          val m = new MatOfDouble
-  //          val s = new MatOfDouble
-  //          Core.meanStdDev(subMat, m, s)
-  //          m.toArray -> s.toArray
-  //        }
 
         }
 
