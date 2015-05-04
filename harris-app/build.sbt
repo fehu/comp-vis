@@ -27,8 +27,37 @@ ProguardKeys.options in Proguard ++= Seq( "-dontnote"
                                         , "-dontwarn"
                                         , "-ignorewarnings"
                                         , "-dontobfuscate"
-//                                        , "-keep,allowshrinking,allowobfuscation interface scala.Specializable" // http://sourceforge.net/p/proguard/bugs/487/
                                         , "-optimizations !class/merging/*" // http://sourceforge.net/p/proguard/bugs/487/
-//                                        , ""
-//                                        , ""
+                                        //
+                                        , "-keep class breeze.stats.** { *** n(); }"
+                                        , """-keep class breeze.stats.DescriptiveStatsTrait$meanAndVariance$$anon$7$$anon$22 {
+                                            |    public double mu();
+                                            |    public double s();
+                                            |}""".stripMargin
+                                        , "-keep class breeze.stats.DescriptiveStatsTrait$accumulateAndCount$$anon$1$$anon$20 { public double sum(); }"
+                                        //
+                                        // from http://proguard.sourceforge.net/manual/examples.html
+                                        , "-keepclassmembers class * { ** MODULE$; }"
+                                        , """-keepclassmembernames class scala.concurrent.forkjoin.ForkJoinPool {
+                                            |    long eventCount;
+                                            |    long stealCount;
+                                            |    int  workerCounts;
+                                            |    int  runControl;
+                                            |    int  indexSeed;
+                                            |    scala.concurrent.forkjoin.ForkJoinPool$WaitQueueNode syncStack;
+                                            |    scala.concurrent.forkjoin.ForkJoinPool$WaitQueueNode spareStack;
+                                            |}""".stripMargin
+                                        , """-keepclassmembernames class scala.concurrent.forkjoin.ForkJoinWorkerThread {
+                                            |    int base;
+                                            |    int sp;
+                                            |    int runState;
+                                            |}""".stripMargin
+                                        , """-keepclassmembernames class scala.concurrent.forkjoin.ForkJoinTask {
+                                            |    int status;
+                                            |}""".stripMargin
+                                        , """-keepclassmembernames class scala.concurrent.forkjoin.LinkedTransferQueue {
+                                            |    scala.concurrent.forkjoin.LinkedTransferQueue$PaddedAtomicReference head;
+                                            |    scala.concurrent.forkjoin.LinkedTransferQueue$PaddedAtomicReference tail;
+                                            |    scala.concurrent.forkjoin.LinkedTransferQueue$PaddedAtomicReference cleanMe;
+                                            |}""".stripMargin
                                           )
