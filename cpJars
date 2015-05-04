@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cp harris-app/target/scala-2.11/proguard/*.jar jars/
