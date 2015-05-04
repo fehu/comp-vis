@@ -7,7 +7,7 @@ import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
 import org.opencv.core.Point
 import slick.driver.H2Driver.api._
-import slick.lifted.ProvenShape
+import slick.lifted.{CanBeQueryCondition, Rep, ProvenShape}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -46,6 +46,9 @@ object SingleChannelDescriptorsWithStats{
                                                                                  onUpdate=ForeignKeyAction.Restrict,
                                                                                  onDelete=ForeignKeyAction.Restrict
                                                                                 )
+
+    def point = pointX -> pointY
+    def key   = (descriptorId, pointX, pointY)
 
     def * = (descriptorId, pointX, pointY, data, mean, std, range, iqr)
   }
@@ -104,6 +107,50 @@ object SingleChannelDescriptorsWithStats{
     def nameAndCountQuery = imageDescriptors.map{
       iD => iD.name -> pointDescriptors.filter(_.descriptorId === iD.id).length
     }
+
+
+    def searchBy( mean      : Option[Double]
+                , std       : Option[Double]
+                , range     : Option[Double]
+                , iqr       : Option[Double]
+                , precision : Double
+                ): Option[ DBIOAction[Map[(UUID, String), Seq[(Int, Int)]], NoStream, Effect.Read] ] =
+      searchByQuery(mean, std, range, iqr, precision)
+        .map{
+          q =>
+            ( for {
+                (id, x, y) <- q
+                name <- table.imageDescriptors.filter(_.id === id).map(_.name)
+              } yield (id, name) -> (x, y)
+            ).result
+             .map(_.groupBy(_._1)
+                   .mapValues(_.map(_._2))
+              )
+
+        }
+
+
+    def searchByQuery ( mean      : Option[Double]
+                      , std       : Option[Double]
+                      , range     : Option[Double]
+                      , iqr       : Option[Double]
+                      , precision : Double
+                      ) =
+    {
+      def mkFilter(f: PointDescriptors => Rep[Double], vOpt: Option[Double]): Option[PointDescriptors => Rep[Boolean]] =
+          vOpt.map(v => tq => (f(tq) - (v: LiteralColumn[Double])).abs < precision)
+
+      val condOpt = Seq(
+        mkFilter(_.mean, mean)
+      , mkFilter(_.std, std)
+      , mkFilter(_.range, range)
+      , mkFilter(_.iqr, iqr)
+      ).flatten
+       .reduceLeftOption[PointDescriptors => Rep[Boolean]]{ case (acc, v) =>  pd => acc(pd) || v(pd) } // <- here is ||
+
+      condOpt.map(table.pointDescriptors.filter(_).map(_.key))
+    }
+
   }
 
 

@@ -33,3 +33,6 @@ project/boot/
 
 ### IntelliJ IDEA
 .idea/
+
+### DB
+*.db

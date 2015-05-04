@@ -3,6 +3,7 @@ package feh.tec.cvis
 import java.awt.image._
 import java.awt.{Color, Dimension}
 import java.nio.ByteBuffer
+import java.util.UUID
 
 import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
@@ -11,11 +12,12 @@ import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.db.HasDbConnections
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import org.h2.jdbc.JdbcSQLException
 import org.opencv.core._
 import slick.driver.H2Driver.api._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.swing.Swing._
 
 object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 -> 800)
@@ -24,6 +26,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
   with GroupingSupport
   with DescriptorsSupport
   with AdminSupport
+  with UserSupport
   with Drawing
 {
 
@@ -42,6 +45,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with GroupingSupportFrame
       with DescriptorsSupportFrame
       with AdminSupportFrame
+      with UserSupportFrame
       with CornerDetection
       with MatSupport
       with HasDbConnections
@@ -71,6 +75,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "distinct"    -> DistinctPanel
         , "describe"    -> DescriptorsPanel
         , "admin"       -> AdminPanel
+        , "user"        -> UserPanel
       )
 
 
@@ -173,6 +178,17 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         def fetchDbInfo(): Future[Seq[(String, Int)]] = db.run(query.namesAndCounts)
 
         def setResult: (IDescriptor) => Unit = d => db.run(query.insert(d))
+      }
+
+
+      object UserPanel extends UserPanel{
+        def getSrc: Map[Point, ADescriptor] = imageDescriptors.get
+
+
+        def searchDbTimeout: FiniteDuration = 200.millis
+
+        def searchDb(mean: Option[Double], std: Option[Double], range: Option[Double], iqr: Option[Double], precision: Double): Future[Map[(UUID, String), Seq[(Int, Int)]]] =
+          query.searchBy(mean, std, range, iqr, precision) map db.run getOrElse Future{ Map() }
       }
 
 
