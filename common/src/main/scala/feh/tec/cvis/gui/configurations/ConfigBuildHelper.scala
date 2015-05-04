@@ -114,7 +114,7 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
 
 
       def fixPreferredSize[B <: AbstractDSLBuilder]: ((B, DSLLabelBuilder[_])) => (B, DSLLabelBuilder[_]) = {
-        case (c, l) => c.affect(x => x.preferredSize = 200 -> x.preferredSize._2).asInstanceOf[B] -> l
+        case (c, l) => c.affect(x => x.preferredSize = 0 -> x.preferredSize._2).asInstanceOf[B] -> l
       }
 
     }
