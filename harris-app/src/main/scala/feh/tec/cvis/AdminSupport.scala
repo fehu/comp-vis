@@ -10,7 +10,8 @@ import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import org.opencv.core.Point
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.FiniteDuration
 import scala.swing.{Component, ScrollPane, Table}
 
 trait AdminSupport {
@@ -33,6 +34,7 @@ trait AdminSupport {
 
       def fetchDbInfo(): Future[Seq[(String, Int)]]
 
+      def dbAccessTimeout: FiniteDuration
 
       lazy val imageName: Var[String] = Var(null)
       lazy val dbInfo   : Var[Seq[(String, Int)]] = Var(Nil)
@@ -43,7 +45,10 @@ trait AdminSupport {
         val f = fetchDbInfo()
         f onSuccess   { case xs => dbInfo set xs }
         f onComplete  { case _  => listDbTrigger.component.unlock() }
+        try Await.ready(f, dbAccessTimeout)
+        catch{ case th: Throwable => listDbTrigger.component.unlock(); throw th }
       }.button("List DB entries")
+
 
       private def dbInfoModel(data: Seq[(String, Int)]) = {
         val names = "Name" :: "Points of interest" :: Nil

@@ -52,10 +52,12 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
     {
       frame =>
 
-      /*lazy */val db = DbConnection(Database.forConfig("h2harris"))
+      def dbAccessTimeout: FiniteDuration = 200.millis
+
+      val db = DbConnection(Database.forConfig("h2harris"))
 
       override def stop(): Unit = {
-        db.close()
+        db.close(dbAccessTimeout)
         super.stop()
       }
 
@@ -166,6 +168,9 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 
       object AdminPanel extends AdminPanel{
+
+        def dbAccessTimeout = frame.dbAccessTimeout
+
         def getSrc: (Array[Byte], Map[Point, ADescriptor]) = {
           val iarr = originalMat.convert(CvType.CV_32S).toArray[Int]
           val barr = Array.ofDim[Byte](iarr.length*4)
@@ -185,7 +190,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         def getSrc: Map[Point, ADescriptor] = imageDescriptors.get
 
 
-        def searchDbTimeout: FiniteDuration = 200.millis
+        def searchDbTimeout = frame.dbAccessTimeout
 
         def searchDb(mean: Option[Double], std: Option[Double], range: Option[Double], iqr: Option[Double], precision: Double): Future[Map[(UUID, String), Seq[(Int, Int)]]] =
           query.searchBy(mean, std, range, iqr, precision) map db.run getOrElse Future{ Map() }

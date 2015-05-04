@@ -5,20 +5,25 @@ import slick.dbio.{Effect, NoStream, DBIOAction}
 import slick.jdbc.JdbcBackend
 import feh.util._
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.FiniteDuration
 
 trait HasDbConnections {
 
   def failure(thr: Throwable): Nothing
   
-  case class DbConnection[B <: JdbcBackend](protected val db: B#Database) {
+  protected class DbConnection[B <: JdbcBackend](mkDb: () => B#Database) {
+    protected var created = false
+    protected lazy val db = try mkDb() $$ {created = true}
+                            catch failurePF
+
     def tryCreateTables(a: DBIOAction[Unit, NoStream, Effect.Schema]): Future[Unit] =
       runWithErrorCatch(failureOnCreatePF orElse failurePF)(a)
     
     def run[R](a: DBIOAction[R, NoStream, Nothing]): Future[R] = runWithErrorCatch(failurePF)(a)
 
-    def close() = db.close()
+    def close(timeout: FiniteDuration) = if(created) Await.result(Future{ db.close() }, timeout)
     
     protected def runWithErrorCatch[R](errPf: PartialFunction[Throwable, Future[R]])
                                       (a: DBIOAction[R, NoStream, Nothing]): Future[R] =
@@ -32,6 +37,10 @@ trait HasDbConnections {
                                 && x.getMessage.contains("\" already exists;") => null.asInstanceOf[R]
     }
 
+  }
+
+  object DbConnection{
+    def apply[B <: JdbcBackend](db: => B#Database): DbConnection[B] = new DbConnection(() => db)
   }
 
 }
