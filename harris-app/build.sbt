@@ -27,7 +27,9 @@ javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx4G")
 
 ProguardKeys.options in Proguard += ProguardOptions.keepMain("feh.tec.cvis.HarrisApp")
 
-//ProguardKeys.proguardVersion in Proguard := "5.2.1"
+ProguardKeys.libraries in Proguard := (ProguardKeys.libraries in Proguard).value.filter(_.getName != "opencv-300.jar")
+
+ProguardKeys.proguardVersion in Proguard := "5.2.1"
 
 ProguardKeys.options in Proguard ++= Seq( "-dontnote"
                                         , "-dontwarn"
@@ -35,15 +37,20 @@ ProguardKeys.options in Proguard ++= Seq( "-dontnote"
                                         , "-dontobfuscate"
                                         , "-optimizations !class/merging/*" // http://sourceforge.net/p/proguard/bugs/487/
                                         //
-                                        , "-keep class breeze.stats.** { *** n(); }"
+//                                        , "-keep class breeze.stats.** { *** n(); }" // wild card seems to cause error
                                         , """-keep class breeze.stats.DescriptiveStatsTrait$meanAndVariance$$anon$7$$anon$22 {
+                                            |    public long   n();
                                             |    public double mu();
                                             |    public double s();
                                             |}""".stripMargin
-                                        , "-keep class breeze.stats.DescriptiveStatsTrait$accumulateAndCount$$anon$1$$anon$20 { public double sum(); }"
+                                        ,"""-keep class breeze.stats.DescriptiveStatsTrait$accumulateAndCount$$anon$1$$anon$20 {
+                                            |    public double sum();
+                                            |    public int    n();
+                                            |}""".stripMargin
                                         //
                                         // from http://proguard.sourceforge.net/manual/examples.html
                                         , "-keepclassmembers class * { ** MODULE$; }"
+//
                                         , """-keepclassmembernames class scala.concurrent.forkjoin.ForkJoinPool {
                                             |    long eventCount;
                                             |    long stealCount;
