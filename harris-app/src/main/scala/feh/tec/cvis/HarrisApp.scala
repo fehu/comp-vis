@@ -8,15 +8,13 @@ import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
+import feh.tec.cvis.db.HasDbConnections
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
-import feh.util._
 import org.h2.jdbc.JdbcSQLException
 import org.opencv.core._
-import slick.dbio.{DBIOAction, NoStream}
 import slick.driver.H2Driver.api._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.swing.Swing._
 
@@ -46,30 +44,18 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with AdminSupportFrame
       with CornerDetection
       with MatSupport
+      with HasDbConnections
     {
       frame =>
 
-      /*lazy */val db = Database.forConfig("h2harris")
-
-      def dbRun[R](a: DBIOAction[R, NoStream, Nothing]): Future[R] =
-        try db.run(a) $$ {_ onFailure failurePF}
-        catch failurePF
+      /*lazy */val db = DbConnection(Database.forConfig("h2harris"))
 
       override def stop(): Unit = {
         db.close()
         super.stop()
       }
 
-      def failurePF[R]: PartialFunction[Throwable, R] = {
-        case x: JdbcSQLException  if x.getMessage.contains("Table \"")
-          && x.getMessage.contains("\" already exists;") => null.asInstanceOf[R]
-        case th: Throwable => failure(th)
-      }
-
-      private def dbSetup = DBIO.seq((table.imageDescriptors.schema ++ table.pointDescriptors.schema).create)
-
-
-      dbRun(dbSetup)
+      db.tryCreateTables( (table.imageDescriptors.schema ++ table.pointDescriptors.schema).create )
 
 //      LayoutDebug = true
 
@@ -184,9 +170,9 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
           barr -> imageDescriptors.get
         }
 
-        def fetchDbInfo(): Future[Seq[(String, Int)]] = dbRun(query.namesAndCounts)
+        def fetchDbInfo(): Future[Seq[(String, Int)]] = db.run(query.namesAndCounts)
 
-        def setResult: (IDescriptor) => Unit = d => dbRun(query.insert(d))
+        def setResult: (IDescriptor) => Unit = d => db.run(query.insert(d))
       }
 
 
