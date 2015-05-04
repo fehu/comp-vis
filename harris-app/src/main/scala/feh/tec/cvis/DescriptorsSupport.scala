@@ -38,35 +38,21 @@ trait DescriptorsSupport {
       with PanelExec[(Mat, Set[Point]), Seq[(Point, ADescriptor)]]
       with ConfigBuildHelperPanel
     {
-      type Params = (Int, String) // Descriptor side size, image name
+      type Params = Int // Descriptor side size
 
       def steps = 1
 
       def classTag    = scala.reflect.classTag[Seq[(Point, ADescriptor)]]
-      def getParams() = descriptorSideSize.get -> imageName.get
+      def getParams() = descriptorSideSize.get
       def setResult   = imageDescriptors set _.toMap
 
 
       lazy val descriptorSideSize     = Var(1)
-      lazy val imageName: Var[String] = Var(null)
 
-      
-      
-      
       object DescriptorSideSize extends ArgDescriptor[Int]("Descriptor side", null, MinCap(1), Step(2))
 
       lazy val descriptorSideSizeControl = mkNumericControl(DescriptorSideSize)(descriptorSideSize.get, descriptorSideSize.set)
 
-//      lazy val imageNameControl = controlFor(imageName.get)(imageName.set).textForm
-      
-//      lazy val descriptorGroupsInfo = monitorFor(imageDescriptor.get.map(_.interestPoints) getOrElse Map()) // todo: rewrite
-//                                        .list
-//                                        .affect(l => l.listenTo(l.mouse.clicks))
-//                                        .affect(l => l.reactions +=  {
-//                                                                        case MouseClicked(`l`, p, _, 2, _) =>
-//                                                                          val ind = l.peer.locationToIndex(p)
-//                                                                          showPointInfo( l.peer.getModel.getElementAt(ind) )
-//                                                                      })
       private def descriptorGroupsInfoModel(data: Seq[(Point, ADescriptor)]) ={
         val names = "Point" :: "Mean" :: "StDev" :: "Range" :: "IQR" :: Nil
         val dArr = data.toArray.map{
@@ -97,14 +83,9 @@ trait DescriptorsSupport {
             c.model = descriptorGroupsInfoModel(t.toSeq)
       }
 
-//      def showPointInfo(group: (Point, ADescriptor))
-
       lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
-        "descriptorSideSize"    -> descriptorSideSizeControl
-//      , "imageName"             -> (imageNameControl -> label("Image name"))
-//      , "descriptorGroupsInfo"  -> (descriptorGroupsInfo.component -> label("Descriptor Groups"))
+        "descriptorSideSize" -> descriptorSideSizeControl
       )
-
 
       override lazy val elems: Seq[(String, Seq[Component])] = mkElems ++ Seq(
         "descriptorGroupsInfo" -> Seq(new ScrollPane(descriptorGroupsInfo.component))
@@ -133,12 +114,11 @@ trait DescriptorsSupport {
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
       def runner: Runner[Params, (Mat, Set[Point]), Seq[(Point, ADescriptor)]] = Runner(
-      nextStep => {
-        case (sideSize, imgName) =>
+      nextStep =>
+        sideSize =>
         {
           case (img, iPoints) => iPoints.toSeq.zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
         }
-      }
       )
     }
 

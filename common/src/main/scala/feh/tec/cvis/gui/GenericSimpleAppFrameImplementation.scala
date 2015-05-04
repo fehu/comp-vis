@@ -430,14 +430,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
            res match {
              case Failure(Interrupted) =>
-             case Failure(thr) =>
-               thr.printStackTrace()
-               onError.foreach(_(thr))
-               Dialog.showMessage(parent = frame,
-                                  message = thr.toString,
-                                  title = "Error",
-                                  messageType = Dialog.Message.Error)
-
+             case Failure(thr) => failure(thr)
              case _ =>
            }
        }
@@ -461,6 +454,16 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         progressBar.variable.affect(_ + 1)
         progressBar.component.label = msg
       }
+    }
+
+    def failure(thr: Throwable) = {
+//      thr.printStackTrace()
+      UpperPanel.onError.foreach(_(thr))
+      Dialog.showMessage(parent = frame,
+                         message = thr.toString,
+                         title = "Error",
+                         messageType = Dialog.Message.Error)
+      throw thr
     }
 
 

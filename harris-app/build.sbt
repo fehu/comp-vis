@@ -12,6 +12,10 @@ libraryDependencies += "com.typesafe.slick" %% "slick" % "3.0.0"
 
 libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.6.4"
 
+libraryDependencies += "com.h2database" % "h2" % "1.4.187"
+
+libraryDependencies += "com.zaxxer" % "HikariCP" % "2.3.3"
+
 
 
 artifactName in packageBin := ((_, m, _) => name.value + "-" + version.value + ".jar")

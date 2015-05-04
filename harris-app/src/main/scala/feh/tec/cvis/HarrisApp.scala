@@ -2,13 +2,22 @@ package feh.tec.cvis
 
 import java.awt.image._
 import java.awt.{Color, Dimension}
+import java.nio.ByteBuffer
 
 import feh.dsl.swing2.Var
+import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
+import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
+import feh.util._
+import org.h2.jdbc.JdbcSQLException
 import org.opencv.core._
+import slick.dbio.{DBIOAction, NoStream}
+import slick.driver.H2Driver.api._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.swing.Swing._
 
 object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 -> 800)
@@ -16,6 +25,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
   with KMeansSupport
   with GroupingSupport
   with DescriptorsSupport
+  with AdminSupport
   with Drawing
 {
 
@@ -33,10 +43,33 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with KMeansSupportFrame
       with GroupingSupportFrame
       with DescriptorsSupportFrame
+      with AdminSupportFrame
       with CornerDetection
       with MatSupport
     {
       frame =>
+
+      /*lazy */val db = Database.forConfig("h2harris")
+
+      def dbRun[R](a: DBIOAction[R, NoStream, Nothing]): Future[R] =
+        try db.run(a) $$ {_ onFailure failurePF}
+        catch failurePF
+
+      override def stop(): Unit = {
+        db.close()
+        super.stop()
+      }
+
+      def failurePF[R]: PartialFunction[Throwable, R] = {
+        case x: JdbcSQLException  if x.getMessage.contains("Table \"")
+          && x.getMessage.contains("\" already exists;") => null.asInstanceOf[R]
+        case th: Throwable => failure(th)
+      }
+
+      private def dbSetup = DBIO.seq((table.imageDescriptors.schema ++ table.pointDescriptors.schema).create)
+
+
+      dbRun(dbSetup)
 
 //      LayoutDebug = true
 
@@ -51,6 +84,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
         , "describe"    -> DescriptorsPanel
+        , "admin"       -> AdminPanel
       )
 
 
@@ -61,15 +95,6 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
         override def drawGroupsCenters(): Unit = {
           KMeansPanel.getInitialLabels set groupsCentersWithPoints.get.map(_._2) // todo: should be in another place, not in draw
-          // {
-//            val inGroups = groupsCentersWithPoints.get.map(_._2)
-//            val outOfGroups = harrisFiltered
-//                                .withFilter(x => !inGroups.exists(_.contains(x._1)))
-//                                .map{
-//                                  case (p, _) => Set(p: Point)
-//                                }
-//            inGroups ++ outOfGroups
-//          }
 
           if(repaint_?.get) HarrisPanel.drawHarris()
           super.drawGroupsCenters()
@@ -146,10 +171,23 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       object DescriptorsPanel extends DescriptorsPanel{
         def getSrc: (Mat, Set[Point]) = originalGray -> distinctInterestPoints.get.map(x => x: Point)
-
-//        def showPointInfo(group: (Point, ADescriptor)) = Dialog.showMessage(frame, "todo")
       }
 
+
+      object AdminPanel extends AdminPanel{
+        def getSrc: (Array[Byte], Map[Point, ADescriptor]) = {
+          val iarr = originalMat.convert(CvType.CV_32S).toArray[Int]
+          val barr = Array.ofDim[Byte](iarr.length*4)
+          val buff = ByteBuffer.wrap(barr)
+          for(i <- iarr) buff.putInt(i)
+
+          barr -> imageDescriptors.get
+        }
+
+        def fetchDbInfo(): Future[Seq[(String, Int)]] = dbRun(query.namesAndCounts)
+
+        def setResult: (IDescriptor) => Unit = d => dbRun(query.insert(d))
+      }
 
 
       frame.updateForms()
