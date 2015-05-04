@@ -4,18 +4,14 @@ import sbt.Keys._
 
 object CommonSettings {
   lazy val settings = Seq(
-    organization := "feh.tec",
-    scalaVersion := "2.11.6",
-    resolvers           += "Fehu's github repo" at "http://fehu.github.io/repo",
-    unmanagedBase in Compile := file("libs/opencv")
+    organization := "feh.tec"
+  , scalaVersion := "2.11.6"
+  , resolvers           += "Fehu's github repo" at "http://fehu.github.io/repo"
+  , unmanagedBase in Compile := file("libs")
   )
 
   System.setProperty("java.library.path", sys.props("java.library.path")
                         + File.pathSeparator + Seq(sys.props("user.dir"), "libs", "opencv", systemDependantPath).mkString(File.separator))
-
-//  System.setProperty("java.library.path",
-//                     "-Djava.library.path=" + sys.props("java.library.path") + File.pathSeparator
-//                                            + Seq("libs", "opencv", systemDependantPath).mkString(File.separator))
 
   def systemDependantPath = (sys.props("os.name").toLowerCase, sys.props("os.arch")) match {
     case (os, "amd64" | "x86_64") if os startsWith "linux"    => "linux-x64"

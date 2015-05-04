@@ -11,34 +11,33 @@ object CV {
 
   lazy val cvLib = "libopencv_java300"
 
-  lazy val resourceDir = "opencv/" + systemDependant._1
+  lazy val sbtResourceDir = "opencv/" + systemDependant._1
   
   def loadNative() = {
     val loadedLibs = listLibs.map(Path(_, File.separatorChar))
 
     if (!loaded)
-      if (loadedLibs.exists(p => p.path.head.startsWith(Core.NATIVE_LIBRARY_NAME) || p.path.head.startsWith(cvLib))) loaded = true
-      else
-        try {
-          val libPath = sys.props("java.library.path").split(File.pathSeparatorChar).toList
-          val (_, suff) = systemDependant
+      try {
+        val libPath = sys.props("java.library.path").split(File.pathSeparatorChar).toList
+        val (syst, suff) = systemDependant
 
-          if (libPath.exists(_.contains(resourceDir))) System.loadLibrary(Core.NATIVE_LIBRARY_NAME)
-          else Runtime.getRuntime.load(extractLib().getAbsolutePath)
+        if (libPath.exists(_.contains(sbtResourceDir))) System.loadLibrary(Core.NATIVE_LIBRARY_NAME + "." + syst)
+        else Runtime.getRuntime.load(extractLib().getAbsolutePath)
 
-          loaded = true
-        }
-        catch {
-          case thr: Throwable =>
-            thr.printStackTrace()
-            sys.exit(1)
-        }
+        loaded = true
+      }
+      catch {
+        case thr: Throwable =>
+          thr.printStackTrace()
+          sys.exit(1)
+      }
   }
 
   def extractLib(): File = {
-    val (path, suff) = systemDependant
-    val lib = ClassLoader.getSystemResourceAsStream(resourceDir + s"/$cvLib.$suff").ensuring(_ != null, "no lib found in resources")
-    val tmp = File.temporary(s"$cvLib.$suff")
+    val (syst, suff) = systemDependant
+    val res = s"$cvLib.$syst.$suff"
+    val lib = ClassLoader.getSystemResourceAsStream(res).ensuring(_ != null, s"no lib $res found in resources")
+    val tmp = File.temporary(res)
     tmp.withOutputStream(File.write(lib)).get
     tmp
   }

@@ -1,6 +1,6 @@
-name := "test-app"
+name := "harris-app"
 
-version := "0.0"
+version := "0.1"
 
 CommonSettings.settings
 
@@ -12,8 +12,24 @@ libraryDependencies += "com.typesafe.slick" %% "slick" % "3.0.0"
 
 
 
-AssemblySettings.settings
+proguardSettings
 
-assemblyJarName in assembly := "test-harris.jar"
+javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx4G")
 
-mainClass in assembly := Some("feh.tec.cvis.HarrisApp")
+//ProguardKeys.proguardVersion in Proguard := "5.2.1"
+
+ProguardKeys.options in Proguard ++= Seq( "-dontnote"
+                                        , "-dontwarn"
+                                        , "-ignorewarnings"
+                                        , "-dontobfuscate"
+//                                        , "-keep,allowshrinking,allowobfuscation interface scala.Specializable" // http://sourceforge.net/p/proguard/bugs/487/
+                                        , "-optimizations !class/merging/*" // http://sourceforge.net/p/proguard/bugs/487/
+//                                        , ""
+//                                        , ""
+                                          )
+
+ProguardKeys.options in Proguard += ProguardOptions.keepMain("feh.tec.cvis.HarrisApp")
+
+ProguardKeys.inputs in Proguard ++= file("libs/opencv").listFiles().toSeq
+
+artifactName in packageBin := ((_, m, _) => name.value + "-" + version.value + ".jar")
