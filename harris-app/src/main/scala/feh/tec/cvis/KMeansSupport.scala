@@ -121,11 +121,10 @@ trait KMeansSupport {
 
       }) $$ {
         _.onUserChange = {
-          b =>
-            println("onChange " + b)
-            initialNClustersControl._1.component.asInstanceOf[Spinner[Int]].value = initialNClusters
-            initialNClustersControl._1.component.enabled = !b
-            centersInitialPolicyControl._1.component.enabled = !b
+          boxOn =>
+            initialNClustersControl._1.component.asInstanceOf[Spinner[Int]].value = if(boxOn) getInitialLabels.get.length else initialNClusters
+            initialNClustersControl._1.component.enabled = !boxOn
+            centersInitialPolicyControl._1.component.enabled = !boxOn
         }
       }
 
