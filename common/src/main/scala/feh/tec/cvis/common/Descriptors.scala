@@ -12,7 +12,9 @@ trait ImageDescriptor {
   def name          : String
   def originalImage : Array[Byte]
 
-//  def descriptorChannels: Int
+  def sideLength: Int
+  def descriptorChannels: Int
+
   def interestPoints: Map[Point, ADescriptor]
 }
 

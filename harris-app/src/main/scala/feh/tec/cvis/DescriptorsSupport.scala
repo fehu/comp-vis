@@ -1,6 +1,7 @@
 package feh.tec.cvis
 
 import java.text.DecimalFormat
+import java.util.UUID
 import javax.swing.SwingConstants
 import javax.swing.table.{DefaultTableCellRenderer, DefaultTableModel}
 
@@ -110,28 +111,21 @@ trait DescriptorsSupport {
       )
 
       // todo: bounding conditions!
-      def mkDescriptor(img: Mat, sideSize: Int)(p: Point): ADescriptor =
-        new AreaDescriptor with SingleChannel with HasStatistics{
-          type Channel = ChannelDescriptor with Statistics
+      def mkDescriptor(img: Mat, sideSize: Int)(p: Point) = {
+        val n = (sideSize - 1).ensuring(_ % 2 == 0, "sideSize must be odd") / 2
 
-          def sideLength = sideSize
+        val subMat =  if(n > 1) img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n)
+                      else      new MatOfDouble(img.get(p.x.toInt, p.y.toInt): _*)
 
-          lazy val channel: Channel = new ChannelDescriptor with Statistics{
-            private val n = (sideSize - 1).ensuring(_ % 2 == 0, "sideSize must be odd") / 2
+        val data: Array[Double] = subMat.toArray
 
-            lazy val subMat = if(n > 1) img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n) else new MatOfDouble(img.get(p.x.toInt, p.y.toInt): _*)
-
-            lazy val data: Array[Double] = subMat.toArray
-            lazy val byRows: Array2D[Double] = subMat    .byRow(_ => _.toArray[Double]).toArray
-            lazy val byCols: Array2D[Double] = subMat.t().byRow(_ => _.toArray[Double]).toArray
-
-
-            lazy val mean   = stats.mean(data)
-            lazy val std    = stats.stddev(data)
-            lazy val range  = data.max - data.min
-            lazy val iqr    = DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
-          }
-
+        ADescriptor( sideSize
+                   , subMat.toArray
+                   , stats.mean(data)
+                   , stats.stddev(data)
+                   , data.max - data.min
+                   , DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
+                   )
         }
 
       def groupDescription(pts: Map[Point, ADescriptor]): Map[Double, Set[Point]] = ???
@@ -143,20 +137,6 @@ trait DescriptorsSupport {
         case (sideSize, imgName) =>
         {
           case (img, iPoints) => iPoints.toSeq.zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
-
-
-//            new ImageDescriptor  {
-//              type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics{
-//                                    type Channel = ChannelDescriptor with Statistics
-//                                  }
-//
-//              def name = imgName
-//
-//              lazy val originalImage: Array[Byte] = toMat(frame.originalImage).convert(CvType.CV_8U).toArray
-//
-//              def interestPoints: Map[Point, ADescriptor] = pts
-//
-//            } : IDescriptor
         }
       }
       )
@@ -166,11 +146,56 @@ trait DescriptorsSupport {
 }
 
 object DescriptorsSupport{
-  type ADescriptor = AreaDescriptor with SingleChannel with HasStatistics {
-                        type Channel = ChannelDescriptor with Statistics
-                      }
 
-  type IDescriptor = ImageDescriptor {
-    type ADescriptor = DescriptorsSupport.ADescriptor
+//  type IDescriptor = ImageDescriptor {
+//    type ADescriptor = DescriptorsSupport.ADescriptor
+//  }
+
+  case class IDescriptor( name: String
+                        , sideLength: Int
+                        , originalImage: Array[Byte]
+                        , interestPoints: Map[Point, ADescriptor]
+                        )
+                        (val id: Option[UUID] = None) extends ImageDescriptor
+  {
+    type ADescriptor        = DescriptorsSupport.ADescriptor
+    def descriptorChannels  = 1
+  }
+
+  case class ADescriptor( sideLength: Int
+                        , data      : Array[Double]
+                        , mean      : Double
+                        , std       : Double
+                        , range     : Double
+                        , iqr       : Double
+                        )
+    extends AreaDescriptor with SingleChannel with HasStatistics
+  {
+
+    type Channel = ChannelDescriptor with Statistics
+
+    lazy val channel: Channel = new ChannelDescriptor with Statistics{
+      def data = ADescriptor.this.data
+
+      def n = sideLength*2+1
+      def sideRange = 0 until n
+
+      lazy val byRows: Array2D[Double] = (
+        for(i <- sideRange) yield (
+          for(j <- sideRange) yield data(i*n + j)
+          ).toArray
+        ).toArray
+
+      lazy val byCols: Array2D[Double] = (
+        for(j <- sideRange) yield (
+          for(i <- sideRange) yield data(i*n + j)
+          ).toArray
+        ).toArray
+
+      def mean  = ADescriptor.this.mean
+      def std   = ADescriptor.this.std
+      def range = ADescriptor.this.range
+      def iqr   = ADescriptor.this.iqr
+    }
   }
 }

@@ -10,6 +10,8 @@ libraryDependencies += "org.scalanlp" %% "breeze" % "0.11.2"
 
 libraryDependencies += "com.typesafe.slick" %% "slick" % "3.0.0"
 
+libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.6.4"
+
 
 
 artifactName in packageBin := ((_, m, _) => name.value + "-" + version.value + ".jar")
