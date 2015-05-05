@@ -111,7 +111,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     type Preview = SimplePreview
 
-    val original: Preview = new SimplePreview{ def img = originalImage }
+//    val original: Preview = new SimplePreview{ def img = originalImage }
     val modified: Preview = new SimplePreview{ def img = modifiedImage }
 
     this.title = frameTitle
@@ -135,7 +135,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     ) |> setDebugBorder(Color.green)
 
     val layout: List[AbstractLayoutSetting] = split(_.Vertical)(
-      panel.grid(2, 1)(original -> "image-original", modified -> "image-modified") -> "left-panel",
+//      panel.grid(2, 1)(original -> "image-original", modified -> "image-modified") -> "left-panel",
+      modified -> "image-modified",
       panel.gridBag(
         place(scrollableTabs).transform(_.addLayout(_.anchor = Anchor.North,
                                                     _.weighty = 1,
@@ -466,6 +467,9 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       throw thr
     }
 
+    object failure{
+      def pf: PartialFunction[Throwable, Nothing] = { case th: Throwable => failure(th) }
+    }
 
     private var _currentConfig: PanelExec[_, _] =  configurations.head._2
     protected lazy val currentProgress = Var(0)

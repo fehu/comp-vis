@@ -31,7 +31,7 @@ trait GenericSimpleApp extends App with AbstractGUI with GenericConfigurationGUI
     val originalImage: BufferedImage
     def modifiedImage: BufferedImage
     
-    val original: Preview
+//    val original: Preview
     val modified: Preview
     val configurations: Seq[(String, Config)]
     
