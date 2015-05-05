@@ -133,30 +133,39 @@ trait UserSupport {
         )
       }
 
-      def showCurrentMatch() = {
-        val sel = currentSelection
-
-        sel.par.foreach{
+      def showCurrentMatch() =
+        currentSelection.par.foreach{
           case (id, point) =>
             val descr = fetchDescriptor(id)
             val ((_, name), ms) = matches.get(point).find(_._1._1 == id).get
 
-            val mat = new Mat(descr.originalSize.height.toInt, descr.originalSize.width.toInt, descr.matType)
-            mat.put(0, 0, descr.originalImage)
-            val cv = ColorConversion(BufferedImageColor.mode(descr.javaType), ColorMode.Gray)
-            val mc = mat.convert(cv).convert(cv.inverse)
-            ms.foreach(p => mc.draw.circle(p, 2, Color.red, thickness = 2))
+            val mat = imageToMat(descr)
+            val gray  = toGray(mat, BufferedImageColor.mode(descr.javaType))
+            ms.foreach(p => gray.draw.circle(p.swap, 2, Color.red, thickness = 2))
 
-            val img = toBufferImage(mc)
+            val img = toBufferImage(gray)
 
             ImageFrame(img).open()
         }
+
+      def showAllMatchesForImage() = currentSelection.groupBy(_._1).par.foreach{
+        case (id, _) =>
+          val descr = fetchDescriptor(id)
+          val gray  = toGray(imageToMat(descr), BufferedImageColor.mode(descr.javaType))
+          val ms    = matches.get.values.flatMap(_.filter(_._1._1 == id).values).flatten.toList.distinct
+
+          ms.foreach{
+            p => gray.draw.circle(p.swap, 2, Color.red, thickness = 2)
+          }
+          ImageFrame(toBufferImage(gray)).open()
       }
       
-      def showAllMatchesForImage() = ???
       
-      
-      
+      protected def imageToMat(d: IDescriptor) = new Mat(d.originalSize, d.matType) $${ _.put(0, 0, d.originalImage) }
+
+      protected def toGray(mat: Mat, from: ColorMode) = ColorConversion(from, ColorMode.Gray) |>{
+        cv => mat.convert(cv).convert(cv.inverse)
+      }
       
       
       
