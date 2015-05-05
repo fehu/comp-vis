@@ -22,7 +22,7 @@ trait AdminSupport {
 
     trait AdminPanel
       extends SimpleVerticalPanel
-      with PanelExec[(Array[Byte], Map[Point, ADescriptor]), IDescriptor]
+      with PanelExec[(Int, Int, Array[Byte], Map[Point, ADescriptor]), IDescriptor]
       with ConfigBuildHelperPanel
     {
       type Params  = String // image name
@@ -78,14 +78,15 @@ trait AdminSupport {
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def runner: Runner[Params, (Array[Byte], Map[Point, ADescriptor]), IDescriptor] = Runner(
+      def runner: Runner[Params, (Int, Int, Array[Byte], Map[Point, ADescriptor]), IDescriptor] = Runner(
         nextStep =>
           name => {
-            case (imgBytes, descriptorsMap) => IDescriptor( name
-                                                          , descriptorsMap.values.head.sideLength
-                                                          , imgBytes
-                                                          , descriptorsMap
-                                                          )()
+            case (width, height, imgBytes, descriptorsMap) => IDescriptor ( name
+                                                                          , descriptorsMap.values.head.sideLength
+                                                                          , new org.opencv.core.Size(width, height)
+                                                                          , imgBytes
+                                                                          , descriptorsMap
+                                                                          )()
           }
       )
     }

@@ -9,7 +9,7 @@ import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
-import feh.tec.cvis.db.HasDbConnections
+import feh.tec.cvis.db.{DescriptorCacheScope, HasDbConnections}
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import org.opencv.core._
@@ -171,13 +171,13 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
         def dbAccessTimeout = frame.dbAccessTimeout
 
-        def getSrc: (Array[Byte], Map[Point, ADescriptor]) = {
+        def getSrc: (Int, Int, Array[Byte], Map[Point, ADescriptor]) = {
           val iarr = originalMat.convert(CvType.CV_32S).toArray[Int]
           val barr = Array.ofDim[Byte](iarr.length*4)
           val buff = ByteBuffer.wrap(barr)
           for(i <- iarr) buff.putInt(i)
 
-          barr -> imageDescriptors.get
+          (originalMat.width(), originalMat.height(), barr, imageDescriptors.get)
         }
 
         def fetchDbInfo(): Future[Seq[(String, Int)]] = db.run(query.namesAndCounts)
