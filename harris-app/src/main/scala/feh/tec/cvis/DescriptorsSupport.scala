@@ -133,6 +133,8 @@ object DescriptorsSupport{
 
   case class IDescriptor( name: String
                         , sideLength: Int
+                        , matType: Int
+                        , javaType: Int
                         , originalSize: Size
                         , originalImage: Array[Byte]
                         , interestPoints: Map[Point, ADescriptor]

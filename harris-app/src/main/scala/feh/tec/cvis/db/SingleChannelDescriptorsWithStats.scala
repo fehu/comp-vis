@@ -15,18 +15,21 @@ import SingleChannelDescriptorsWithStats.table._
 
 object SingleChannelDescriptorsWithStats{
 
-  class ImageDescriptors(tag: Tag) extends Table[(UUID, String, Array[Byte], Int, Int, Int)](tag, "ImageDescriptors"){
-
+  class ImageDescriptors(tag: Tag)
+    extends Table[(UUID, String, Array[Byte], Int, Int, Int, Int, Int)](tag, "ImageDescriptors")
+  {
     def id    : Rep[UUID]        = column[UUID]        ("id", O.PrimaryKey)
     def name  : Rep[String]      = column[String]      ("name")
 
     def image : Rep[Array[Byte]] = column[Array[Byte]] ("image")
     def width                    = column[Int]         ("width")
     def height                   = column[Int]         ("height")
+    def matTpe                   = column[Int]         ("type_mat")
+    def javaTpe                  = column[Int]         ("type_java")
 
     def sideLength               = column[Int]         ("side")
 
-    def * : ProvenShape[(UUID, String, Array[Byte], Int, Int, Int)] = (id, name, image, width, height, sideLength)
+    def * = (id, name, image, width, height, matTpe, javaTpe, sideLength)
   }
 
   class PointDescriptors(tag: Tag)
@@ -66,7 +69,15 @@ object SingleChannelDescriptorsWithStats{
     def insert(d: IDescriptor) = {
       val id = UUID.randomUUID()
       DBIO.seq(
-        imageDescriptors +=(id, d.name, d.originalImage, d.originalSize.width.toInt, d.originalSize.height.toInt, d.sideLength)
+        imageDescriptors +=( id
+                           , d.name
+                           , d.originalImage
+                           , d.originalSize.width.toInt
+                           , d.originalSize.height.toInt
+                           , d.matType
+                           , d.javaType
+                           , d.sideLength
+                           )
       , pointDescriptors ++= d.interestPoints.map {
           case (p, descr) =>
             ( id
@@ -86,20 +97,20 @@ object SingleChannelDescriptorsWithStats{
     def get(id: UUID): DBIOAction[IDescriptor, NoStream, Effect.Read] = {
       val getIDescr = imageDescriptors
                         .filter(_.id === id)
-                        .map(d => (d.name, d.image, d.width, d.height, d.sideLength))
+                        .map(d => (d.name, d.image, d.width, d.height, d.matTpe, d.javaTpe, d.sideLength))
       val getPDescr = pointDescriptors
                         .filter(_.descriptorId === id)
                         .map(d => (d.pointX, d.pointY, d.data, d.mean, d.std, d.range, d.iqr))
   
       getIDescr.result flatMap {
-        case (name, image, width, height, side) :: Nil =>
+        case (name, image, width, height, matTpe, javaTpe, side) :: Nil =>
           getPDescr.to[List].result map {
             pdb =>
               val pts = pdb.map {
                 case (x, y, data, mean, std, range, iqr) =>
                   (x -> y: Point) -> ADescriptor(side, toDoubles(side, data), mean, std, range, iqr)
               }
-              IDescriptor(name, side, new Size(width, height), image, pts.toMap)(Some(id))
+              IDescriptor(name, side, matTpe, javaTpe, new Size(width, height), image, pts.toMap)(Some(id))
           }
       }
     }
