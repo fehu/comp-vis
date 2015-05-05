@@ -39,7 +39,7 @@ ProguardKeys.options in Proguard ++= Seq( "-dontnote"
                                         , "-optimizations !code/allocation/variable"
                                         //
                                         , "-keep class com.zaxxer.hikari.**{ *; }"
-                                        , "-keep class org.h2.Driver{ *; }" // "-keep class * implements java.sql.Driver"
+                                        , "-keep class org.h2.**{ *; }" // "-keep class * implements java.sql.Driver"
                                         //
 //                                        , "-keep class breeze.stats.** { *** n(); }" // wild card seems to cause error
                                         , """-keep class breeze.stats.DescriptiveStatsTrait$meanAndVariance$$anon$7$$anon$22 {
