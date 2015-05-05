@@ -9,14 +9,14 @@ import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
-import feh.tec.cvis.db.{DescriptorCacheScope, HasDbConnections}
+import feh.tec.cvis.db.{HasDescriptorCache, HasDbConnections}
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
 import feh.tec.cvis.gui.GenericSimpleApp.DefaultApp
 import org.opencv.core._
 import slick.driver.H2Driver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.swing.Swing._
 
@@ -49,12 +49,13 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with CornerDetection
       with MatSupport
       with HasDbConnections
+      with HasDescriptorCache
     {
       frame =>
 
       def dbAccessTimeout: FiniteDuration = 200.millis
 
-      val db = DbConnection(Database.forConfig("h2harris"))
+      implicit val db = DbConnection(Database.forConfig("h2harris"))
 
       override def stop(): Unit = {
         db.close(dbAccessTimeout)
@@ -195,6 +196,8 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       object UserPanel extends UserPanel{
         def getSrc: Map[Point, ADescriptor] = imageDescriptors.get
 
+
+        def fetchDescriptor(id: UUID)= Await.result(descriptorCache.get(id), frame.dbAccessTimeout)
 
         def searchDbTimeout = frame.dbAccessTimeout
 

@@ -1,16 +1,19 @@
 package feh.tec.cvis
 
+import java.awt.Color
+import java.awt.image.BufferedImage
 import java.util.UUID
 import javax.swing.JSpinner
 
+import feh.tec.cvis.common.cv._
 import feh.tec.cvis.common.cv.describe.{ArgModifier, ArgDescriptor}
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.util._
 import feh.dsl.swing2.{Monitor, Var, Control}
 import feh.tec.cvis.DescriptorsSupport.{IDescriptor, ADescriptor}
-import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
+import feh.tec.cvis.gui.{SimplePreview, GenericSimpleAppFrameImplementation}
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
-import org.opencv.core.Point
+import org.opencv.core.{Mat, Point}
 import feh.tec.cvis.common.cv.Helper._
 
 import scala.concurrent.duration.FiniteDuration
@@ -18,7 +21,7 @@ import scala.concurrent.{Await, Future}
 import scala.swing._
 
 trait UserSupport {
-  env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
+  env: GenericSimpleAppFrameImplementation with ConfigBuildHelper with Drawing =>
 
   trait UserSupportFrame extends ConfigurationsPanelBuilder {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
@@ -31,6 +34,7 @@ trait UserSupport {
       extends SimpleVerticalPanel
       with PanelExec[Map[Point, ADescriptor], Matches]
       with ConfigBuildHelperPanel
+      with ColorConverting
     {
 
       def steps = getSrc.size
@@ -82,6 +86,11 @@ trait UserSupport {
 
       lazy val searchPrecisionControl = mkNumericControl(SearchPrecision)(searchPrecision, searchPrecision = _) |> fixPreferredSize
 
+      lazy val showCurrentMatchTrigger       = triggerFor(showCurrentMatch)         .button("Current match")
+      lazy val showAllMatchesForImageTrigger = triggerFor(showAllMatchesForImage()) .button("All matches for image")
+
+      lazy val showPanel = panel.box(_.Horizontal)(showCurrentMatchTrigger -> noId, showAllMatchesForImageTrigger -> noId)
+
       lazy val foundInfo = Monitor.forTable(matches, new Table())(
         columns = "UUID" :: "Point" :: "Matched Image" :: "Matched Points" :: Nil
       , initial = Map()
@@ -102,18 +111,61 @@ trait UserSupport {
         }
       )
 
-
       override lazy val elems: Seq[(String, Seq[Component])] = mkElems ++ Seq(
-        "foundInfo" -> Seq(label("Preliminary matches").component, new ScrollPane(foundInfo.component))
+        "showPanel" -> Seq(label("<html><h3>Show</h3></html>").component, showPanel.component)
+      , "foundInfo" -> Seq(label("Preliminary matches").component, new ScrollPane(foundInfo.component))
       )
+
+      
+      
+      
+      def fetchDescriptor(id: UUID): IDescriptor
+      
+      case class ImageFrame(img: BufferedImage) extends Frame{
+        contents = new SimplePreview {
+          def img: BufferedImage = ImageFrame.this.img
+        }
+      }
+
+      protected def currentSelection = foundInfo.component |> {
+        c => c.selection.rows.map(
+          row => c.peer.getModel.getValueAt(row, 0).asInstanceOf[UUID] -> c.peer.getModel.getValueAt(row, 1).asInstanceOf[(Int, Int)]
+        )
+      }
+
+      def showCurrentMatch() = {
+        val sel = currentSelection
+
+        sel.par.foreach{
+          case (id, point) =>
+            val descr = fetchDescriptor(id)
+            val ((_, name), ms) = matches.get(point).find(_._1._1 == id).get
+
+            val mat = new Mat(descr.originalSize, descr.matType)
+            mat.put(0, 0, descr.originalImage)
+            mat.convert(ColorConversion(BufferedImageColor.mode(descr.javaType), ColorMode.Gray))
+            ms.foreach(p => mat.draw.circle(p, 2, Color.red))
+
+            val img = toBufferImage(mat, Some(descr.javaType))
+
+            ImageFrame(img).open()
+        }
+      }
+      
+      def showAllMatchesForImage() = ???
+      
+      
+      
+      
+      
+      
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
       def runner: Runner[Params, Map[Point, ADescriptor], Matches] = Runner(
         nextStep => {
           case (sOpts, sPrec) =>
-            src =>
-              src.map{
+            _.map{
                 case (p, ad) =>
                   val mean  = if(sOpts.byMean)  Some(ad.mean)   else None
                   val std   = if(sOpts.byStd)   Some(ad.std)    else None
@@ -122,7 +174,7 @@ trait UserSupport {
                   val res   = Await.result(searchDb(mean, std, range, iqr, sPrec.precision), searchDbTimeout)
                   nextStep()
                   p.pairInt -> res
-              }
+            }.filter(_._2.nonEmpty)
 
 
 

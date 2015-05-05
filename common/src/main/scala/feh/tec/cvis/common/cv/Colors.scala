@@ -90,7 +90,9 @@ object ColorConversion{
 
 object BufferedImageColor{
 
-  def mode(img: BufferedImage): ColorMode = img.getType match {
+  def mode(img: BufferedImage): ColorMode = mode(img.getType)
+
+  def mode(tpe: Int): ColorMode = tpe match {
     case BufferedImage.TYPE_3BYTE_BGR | BufferedImage.TYPE_INT_BGR  => ColorMode.BGR
     case BufferedImage.TYPE_4BYTE_ABGR                              => ColorMode.BGRA
     case BufferedImage.TYPE_INT_RGB                                 => ColorMode.RGB

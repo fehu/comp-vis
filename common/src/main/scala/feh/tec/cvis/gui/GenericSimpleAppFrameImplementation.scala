@@ -234,7 +234,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     // Mat support
     def toMat(img: BufferedImage): Mat
-    def toBufferImage(mat: Mat): BufferedImage
+    def toBufferImage(mat: Mat, tpeOpt: Option[Int] = None): BufferedImage
 
     
     trait PanelExec[Src, R] extends Component{
@@ -296,7 +296,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       mat
     }
 
-    def toBufferImage(mat: Mat): BufferedImage = {
+    def toBufferImage(mat: Mat, tpeOpt: Option[Int] = None): BufferedImage = {
       val gray  = mat.channels() == 1
       val norm  = mat.channels() == 3
       val alpha = mat.channels() == 4
@@ -346,7 +346,7 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
       tpe.map{
                case (tpe, setData) =>
-                 val img = new BufferedImage(mat.width(), mat.height(), tpe)
+                 val img = new BufferedImage(mat.width(), mat.height(), tpeOpt getOrElse tpe)
                  setData(img.getRaster.getDataBuffer)
                  img
              }

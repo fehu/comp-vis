@@ -103,7 +103,7 @@ object SingleChannelDescriptorsWithStats{
                         .map(d => (d.pointX, d.pointY, d.data, d.mean, d.std, d.range, d.iqr))
   
       getIDescr.result flatMap {
-        case (name, image, width, height, matTpe, javaTpe, side) :: Nil =>
+        case Vector( (name, image, width, height, matTpe, javaTpe, side) )=>
           getPDescr.to[List].result map {
             pdb =>
               val pts = pdb.map {
