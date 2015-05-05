@@ -141,12 +141,13 @@ trait UserSupport {
             val descr = fetchDescriptor(id)
             val ((_, name), ms) = matches.get(point).find(_._1._1 == id).get
 
-            val mat = new Mat(descr.originalSize, descr.matType)
+            val mat = new Mat(descr.originalSize.height.toInt, descr.originalSize.width.toInt, descr.matType)
             mat.put(0, 0, descr.originalImage)
-            mat.convert(ColorConversion(BufferedImageColor.mode(descr.javaType), ColorMode.Gray))
-            ms.foreach(p => mat.draw.circle(p, 2, Color.red))
+            val cv = ColorConversion(BufferedImageColor.mode(descr.javaType), ColorMode.Gray)
+            val mc = mat.convert(cv).convert(cv.inverse)
+            ms.foreach(p => mc.draw.circle(p, 2, Color.red, thickness = 2))
 
-            val img = toBufferImage(mat, Some(descr.javaType))
+            val img = toBufferImage(mc)
 
             ImageFrame(img).open()
         }

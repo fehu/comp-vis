@@ -172,20 +172,14 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
         def dbAccessTimeout = frame.dbAccessTimeout
 
-        def getSrc: (Int, Int, Int, Int, Array[Byte], Map[Point, ADescriptor]) = {
-          val iarr = originalMat.convert(CvType.CV_32S).toArray[Int]
-          val barr = Array.ofDim[Byte](iarr.length*4)
-          val buff = ByteBuffer.wrap(barr)
-          for(i <- iarr) buff.putInt(i)
-
+        def getSrc: (Int, Int, Int, Int, Array[Byte], Map[Point, ADescriptor]) =
           ( originalMat.width()
           , originalMat.height()
           , originalMat.`type`()
           , originalImage.getType
-          , barr
+          , originalMat.toArray[Byte]
           , imageDescriptors.get
           )
-        }
 
         def fetchDbInfo(): Future[Seq[(String, Int)]] = db.run(query.namesAndCounts)
 

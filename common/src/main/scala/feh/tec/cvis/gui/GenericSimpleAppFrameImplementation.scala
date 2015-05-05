@@ -297,32 +297,13 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
 
     def toBufferImage(mat: Mat, tpeOpt: Option[Int] = None): BufferedImage = {
+      val tpe = bufferedImageTypeByMat(mat)
+
       val gray  = mat.channels() == 1
       val norm  = mat.channels() == 3
       val alpha = mat.channels() == 4
-
-      val setByte  = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferByte].getData)
-      val setShort = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferShort].getData)
-      val setInt   = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
       val setFloat = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferFloat].getData)
 
-
-      def tpe = PartialFunction.condOpt(mat.depth()) {
-        // Byte
-        case CvType.CV_8U  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
-        case CvType.CV_8U  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
-        case CvType.CV_8U  if alpha => BufferedImage.TYPE_4BYTE_ABGR -> setByte
-        // UShort
-        case CvType.CV_16U if gray  => BufferedImage.TYPE_USHORT_GRAY -> setShort
-        // Int
-        case CvType.CV_32S if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
-        case CvType.CV_32S if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
-        // Float todo ?? treat as int ???
-        case CvType.CV_32F if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
-        case CvType.CV_32F if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
-      }
-
-//
 //      val img = new BufferedImage(mat.width(), mat.height(), tpe)
 //      setData(img.getRaster.getDataBuffer)
 //      img
@@ -351,6 +332,33 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
                  img
              }
         .getOrElse(manually)
+    }
+
+    def bufferedImageTypeByMat(mat: Mat) = {
+      val gray  = mat.channels() == 1
+      val norm  = mat.channels() == 3
+      val alpha = mat.channels() == 4
+
+      val setByte  = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferByte].getData)
+      val setShort = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferShort].getData)
+      val setInt   = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferInt].getData)
+      val setFloat = (buff: DataBuffer) => mat.get(0, 0, buff.asInstanceOf[DataBufferFloat].getData)
+
+
+      PartialFunction.condOpt(mat.depth()) {
+        // Byte
+        case CvType.CV_8U  if gray  => BufferedImage.TYPE_BYTE_GRAY  -> setByte
+        case CvType.CV_8U  if norm  => BufferedImage.TYPE_3BYTE_BGR  -> setByte
+        case CvType.CV_8U  if alpha => BufferedImage.TYPE_4BYTE_ABGR -> setByte
+        // UShort
+        case CvType.CV_16U if gray  => BufferedImage.TYPE_USHORT_GRAY -> setShort
+        // Int
+        case CvType.CV_32S if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
+        case CvType.CV_32S if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
+        // Float todo ?? treat as int ???
+        case CvType.CV_32F if norm  => BufferedImage.TYPE_INT_RGB  -> setInt
+        case CvType.CV_32F if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
+      }
     }
   }
 
