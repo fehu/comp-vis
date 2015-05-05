@@ -95,18 +95,21 @@ trait DescriptorsSupport {
       def mkDescriptor(img: Mat, sideSize: Int)(p: Point) = {
         val n = (sideSize - 1).ensuring(_ % 2 == 0, "sideSize must be odd") / 2
 
-        val subMat =  if(n > 1) img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n)
-                      else      new MatOfDouble(img.get(p.x.toInt, p.y.toInt): _*)
+        val subMatOpt = if(n > 1)
+                          if(p.x + n  > img.width || p.x - n  < 0 || p.y + n  > img.height || p.y - n  < 0) None
+                          else Some(img.submat(p.x.toInt-n, p.x.toInt+n, p.y.toInt-n, p.y.toInt+n))
+                        else Some(new MatOfDouble(img.get(p.x.toInt, p.y.toInt): _*))
 
-        val data: Array[Double] = subMat.toArray
+        val data: Array[Double] = subMatOpt.map(_.toArray[Double]) getOrElse Array.empty
 
-        ADescriptor( sideSize
-                   , subMat.toArray
-                   , stats.mean(data)
-                   , stats.stddev(data)
-                   , data.max - data.min
-                   , DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
-                   )
+        if(data.nonEmpty) Some( ADescriptor( sideSize
+                                           , data
+                                           , stats.mean(data)
+                                           , stats.stddev(data)
+                                           , data.max - data.min
+                                           , DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
+                                           ))
+        else None
         }
 
       def groupDescription(pts: Map[Point, ADescriptor]): Map[Double, Set[Point]] = ???
@@ -117,7 +120,10 @@ trait DescriptorsSupport {
       nextStep =>
         sideSize =>
         {
-          case (img, iPoints) => iPoints.toSeq.zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
+          case (img, iPoints) => iPoints.toSeq
+                                  .zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
+                                  .filter(_._2.isDefined)
+                                  .mapVals(_.get)
         }
       )
     }
