@@ -71,12 +71,12 @@ trait KMeansSupport {
 
       object InitialNClusters     extends ArgDescriptor[Int]("initial number of clusters",              null, MinCap(1))
       object NClustersStep        extends ArgDescriptor[Int]("step for the number of clusters search",  null, MinCap(1))
-      object NClustersMaxTries    extends ArgDescriptor[Int]("step for the number of clusters search",  null, MinCap(1))
+      object NClustersMaxTries    extends ArgDescriptor[Int]("maximum number of tries",                 null, MinCap(1))
 
       object CriteriaMaxCount     extends ArgDescriptor[Int]    ("maximum tries", null, MinCap(1))
       object CriteriaEpsilon      extends ArgDescriptor[Double] ("epsilon",       null, ArgModifier.Positive)
 
-      object Attempts             extends ArgDescriptor[Int]          ("Number of attempts",     null, MinCap(1))
+      object Attempts             extends ArgDescriptor[Int]    ("Number of attempts",     null, MinCap(1))
 
       object CentersInitialPolicy extends ArgDescriptor[CentersPolicy]("centers initial policy", null)
       lazy val centersInitialPolicyDomain = CentersPolicy.Random :: CentersPolicy.PP :: Nil

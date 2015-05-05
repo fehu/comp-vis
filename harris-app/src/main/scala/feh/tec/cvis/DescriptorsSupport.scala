@@ -110,13 +110,11 @@ trait DescriptorsSupport {
                                            , DescriptiveStats.percentile(data, 0.75) - DescriptiveStats.percentile(data, 0.25)
                                            ))
         else None
-        }
-
-      def groupDescription(pts: Map[Point, ADescriptor]): Map[Double, Set[Point]] = ???
+      }
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def runner: Runner[Params, (Mat, Set[Point]), Seq[(Point, ADescriptor)]] = Runner(
+      lazy val runner: Runner[Params, (Mat, Set[Point]), Seq[(Point, ADescriptor)]] = Runner(
       nextStep =>
         sideSize =>
         {
