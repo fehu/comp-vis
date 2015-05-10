@@ -11,7 +11,7 @@ import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.util._
 import feh.dsl.swing2.{Monitor, Var, Control}
 import feh.tec.cvis.DescriptorsSupport.{IDescriptor, ADescriptor}
-import feh.tec.cvis.gui.{SimplePreview, GenericSimpleAppFrameImplementation}
+import feh.tec.cvis.gui.{PreviewMouseReaction, PreviewHighlights, SimplePreview, GenericSimpleAppFrameImplementation}
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import org.opencv.core.{Mat, Point}
 import feh.tec.cvis.common.cv.Helper._
@@ -121,9 +121,34 @@ trait UserSupport {
       
       def fetchDescriptor(id: UUID): IDescriptor
       
-      case class ImageFrame(img: BufferedImage) extends Frame{
-        contents = new SimplePreview {
-          def img: BufferedImage = ImageFrame.this.img
+      case class ImageFrame(img: BufferedImage, pointsOfInterest: Set[(Int, Int)], hRadius: Int) extends Frame{
+        contents = new SimplePreview with PreviewHighlights with PreviewMouseReaction{
+          def img = ImageFrame.this.img
+
+          def highlightColor = Color.yellow
+
+          protected lazy val highlightCache = pointsOfInterest.flatMap{
+            case p@(pX, pY) => for{
+                x <- -hRadius to hRadius
+                y <- -hRadius to hRadius
+                if x*x + y*y < hRadius*hRadius
+              } yield p -> (pX + x, pY + y)
+          }.groupBy(_._1)
+           .mapValues(_.map(_._2))
+
+          def onMouseMovement = {
+            case (p, _) =>
+              highlightCache.find(_._2 contains (p.y, p.x)).map{
+                case (_, points) =>
+                  highlights set points.map(x => x: scala.swing.Point)
+                  this.repaint()
+              }.getOrElse{
+                if (highlights.get.nonEmpty) {
+                  highlights set Set()
+                  this.repaint()
+                }
+              }
+          }
         }
       }
 
@@ -132,6 +157,8 @@ trait UserSupport {
           row => c.peer.getModel.getValueAt(row, 0).asInstanceOf[UUID] -> c.peer.getModel.getValueAt(row, 1).asInstanceOf[(Int, Int)]
         )
       }
+      
+      def imageFrameHighlightActivationRadius = 3
 
       def showCurrentMatch() =
         currentSelection.par.foreach{
@@ -145,7 +172,7 @@ trait UserSupport {
 
             val img = toBufferImage(gray)
 
-            ImageFrame(img).open()
+            ImageFrame(img, ms.toSet, imageFrameHighlightActivationRadius).open()
         }
 
       def showAllMatchesForImage() = currentSelection.groupBy(_._1).par.foreach{
@@ -157,9 +184,9 @@ trait UserSupport {
           ms.foreach{
             p => gray.draw.circle(p.swap, 2, Color.red, thickness = 2)
           }
-          ImageFrame(toBufferImage(gray)).open()
+          ImageFrame(toBufferImage(gray), ms.toSet, imageFrameHighlightActivationRadius).open()
       }
-      
+
       
       protected def imageToMat(d: IDescriptor) = new Mat(d.originalSize, d.matType) $${ _.put(0, 0, d.originalImage) }
 

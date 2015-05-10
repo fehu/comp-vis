@@ -1,6 +1,6 @@
 name := "harris-app"
 
-version := "0.2"
+version := "0.3-SNAPSHOT"
 
 CommonSettings.settings
 
