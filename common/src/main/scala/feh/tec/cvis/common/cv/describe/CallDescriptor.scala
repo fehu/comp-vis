@@ -23,6 +23,14 @@ case class CallHistory[+LastRes](last: CallHistory.Entry[LastRes], prev: List[Ca
   def aggregate[Res](entry: CallHistory.Entry[Res]): CallHistory[Res] = CallHistory(entry, toList)
 }
 
+case class CallHistoryContainer[+R](value: R, history: CallHistory[R]){
+  def affect[T](hist: CallHistory.Entry[T])(f: R => T): CallHistoryContainer[T] = copy(f(value), history aggregate hist)
+}
+
+object CallHistoryContainer{
+  object Empty extends CallHistoryContainer(null, CallHistory.Empty)
+}
+
 object CallHistory{
 
   object Empty extends CallHistory(null, Nil){
@@ -36,5 +44,5 @@ object CallHistory{
 
     def arg[T] = getArg[T] _ andThen (_.get)
   }
-  
+
 }

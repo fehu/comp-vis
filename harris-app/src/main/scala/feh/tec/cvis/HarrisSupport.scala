@@ -1,13 +1,17 @@
 package feh.tec.cvis
 
 import java.awt.Color
-import javax.swing.SpinnerNumberModel
 
+import feh.dsl.swing2.Var
 import feh.tec.cvis.common.cv.Drawing._
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv._
+import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
+import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.{ArgDescriptor, CallDescriptor, CallHistory, CallHistoryContainer}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
-import feh.tec.cvis.gui.configurations.{ConfigBuildHelper, GuiArgModifier, Harris}
+import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
+import feh.tec.cvis.gui.configurations.{ConfigBuildHelper, Harris}
 import feh.util._
 import org.opencv.core.Mat
 
@@ -16,6 +20,7 @@ trait HarrisSupport extends Harris{
 
   trait HarrisSupportFrame
     extends ConfigurationsPanelBuilder
+    with HistorySupport
     with HarrisGUI
     with ColorConverting
   {
@@ -27,40 +32,64 @@ trait HarrisSupport extends Harris{
 
     protected var originalGray: Mat = null
 
-    protected var harrisResult  : List[((Int, Int), Double)] = Nil
-    protected var harrisFiltered: List[((Int, Int), Double)] = Nil
+    type HarrisResult = List[((Int, Int), Double)]
+
+    protected var harrisResult  : Var[CallHistoryContainer[HarrisResult]] = Var(CallHistoryContainer.Empty)
+    protected var harrisFiltered: Var[CallHistoryContainer[HarrisResult]] = Var(CallHistoryContainer.Empty)
 
     protected var filteredInterestPointsCount: Int = 0
     protected var initialNClusters: Int = 1
 
 
-    object HarrisPanel extends SimpleVerticalPanel with HarrisConfigurationPanelExec{
+    object HarrisPanel
+      extends SimpleVerticalPanel
+      with HarrisConfigurationPanelExec
+      with PanelExecHistory[Mat, Mat]
+    {
       panel =>
 
       def steps = 2
 
-      def kStep = Some(GuiArgModifier.Step(0.001))
+      def kStep = Some(Step(0.001))
 
       def getSrc = originalMat
       def setResult: Mat => Unit = _ => drawHarris()
 
-      var threshold: Double = 0.1
-      lazy val thresholdControl = controlForOrdered(threshold)(threshold = _)
-                                  .spinner(new SpinnerNumberModel(threshold, 0, Double.PositiveInfinity, 0.001))
 
-      lazy val applyThresholdButton = triggerFor{
-        if(repaint_?.get) setHarrisFiltered( filterHarris(harrisResult) )
-        drawHarris()
-        tabs.tryUpdate()
-      }.button("Apply Threshold")
+      def callDescriptor = describe.Harris.Descriptor
+      def paramDescriptors: Set[ArgEntry[_]] = Set(
+        ArgEntry(describe.Harris.BlockSize, blockSize)
+      , ArgEntry(describe.Harris.KSize, kSize)
+      , ArgEntry(describe.Harris.K, k)
+      , ArgEntry(ResponseFuncDescriptor, responseFunc)
+      )
 
-      var responseFunc: ResponseFunc = ResponseFunc.Original
+      def getPrevHist: CallHistory[Mat] = CallHistory.Empty
+      def setHResult: ((Mat, CallHistory[Mat])) => Unit = _ => drawHarris()
+
+      object ResponseFuncDescriptor extends ArgDescriptor[ResponseFunc]("Response function", null)
+      object Threshold extends ArgDescriptor[Double]("Threshold", "ignore values below", MinCap(0), Step(0.001))
+
+      var responseFunc: ResponseFunc  = ResponseFunc.Original
+      var threshold   : Double        = 0.1
+
       lazy val responseFuncControl = controlForSeq(ResponseFunc.all,  static = true)
                                      .dropDownList{
                                                     rf =>
                                                       responseFunc = rf
                                                       componentAccess.get("k").get.visible = rf == ResponseFunc.Original
                                                   }
+
+      lazy val thresholdControl    = mkNumericControl(Threshold)(threshold, threshold = _) |> fixPreferredSize
+
+      lazy val applyThresholdButton = triggerFor{
+        setHarrisFiltered( filterHarris(harrisResult.get.value) )
+        if(repaint_?.get) {
+          drawHarris()
+          tabs.tryUpdate()
+        }
+      }.button("Apply Threshold")
+
 
       case class ResponseFunc(name: String, fromGray: Mat => Stream[((Int, Int), Double)]){
         override def toString = name
@@ -92,9 +121,9 @@ trait HarrisSupport extends Harris{
                                           else if (c > 10)    c / 10
                                           else                1
 
-      def setHarrisFiltered(seq: Seq[((Int, Int), Double)]) = {
-        harrisFiltered = seq.toList
-        filteredInterestPointsCount = harrisFiltered.length
+      def setHarrisFiltered(res: HarrisResult) = {
+        harrisFiltered affect ( _.affect(filterHarrisHistory)(_ => res) )
+        filteredInterestPointsCount = res.length
         initialNClusters = calcInitialNClusters(filteredInterestPointsCount)
       }
 
@@ -107,10 +136,10 @@ trait HarrisSupport extends Harris{
                 grayImg =>
                   originalGray = grayImg.convert(cvt.inverse)
                   nextStep()
-                  val responses = responseFunc.fromGray(grayImg)
-                  harrisResult = responses.toList            // TODO !!! no side effects should be present here
+                  val responses = responseFunc.fromGray(grayImg).toList
+                  harrisResult set CallHistoryContainer(responses, CallHistory.Empty)            // TODO !!! no side effects should be present here
                   nextStep()
-                  setHarrisFiltered( filterHarris(harrisResult) )
+                  setHarrisFiltered( filterHarris(responses) )
                 grayImg
               }
       }
@@ -126,21 +155,25 @@ trait HarrisSupport extends Harris{
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def filterHarris: Seq[((Int, Int), Double)] => Seq[((Int, Int), Double)] = _.filter(_._2 >= threshold)
+      lazy val FilterHarris = CallDescriptor("filter harris points of interest")
+      
+      def filterHarrisHistory = CallHistory.Entry(FilterHarris, Set(ArgEntry(Threshold, threshold)))
+      
+      def filterHarris: HarrisResult => HarrisResult = _.filter(_._2 >= threshold)
 
       lazy val showFilteredInterestPointsCount  = monitorFor(s"Filtered interest points: $filteredInterestPointsCount").text
 
       override def formBuilders: Seq[(String, (DSLFormBuilder[_], DSLLabelBuilder[_]))] =
         super.formBuilders ++ Seq(
-          "responseFunc"                  -> (responseFuncControl -> label("Response Function")),
-          "threshold"                     -> (thresholdControl    -> label("Threshold")),
+          "responseFunc"                  -> (responseFuncControl -> label(ResponseFuncDescriptor.name)),
+          "threshold"                     -> thresholdControl,
           "applyThreshold"                -> (applyThresholdButton            -> label("")),
           "filteredInterestPointsCount"   -> (showFilteredInterestPointsCount -> label(""))
         )
 
       def drawHarris() = {
         if(repaint_?.get) Option(originalGray) map (_.clone()) foreach setImageMat
-        affectImageMat(img => harrisFiltered.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
+        affectImageMat(img => harrisFiltered.get.value.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
         repaintImage()
       }
     }
