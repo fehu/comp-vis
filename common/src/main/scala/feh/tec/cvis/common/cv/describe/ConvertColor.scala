@@ -17,7 +17,7 @@ object ConvertColor {
                                                              "if the parameter is 0, the number of the channels is derived " +
                                                              "automatically from src and code .")
 
-  object Descriptor extends CallDescriptor[ColorConverting, Mat, (ColorConversion, Option[Int]), Mat](
+  object Descriptor extends CallContainer[ColorConverting, Mat, (ColorConversion, Option[Int]), Mat]( "ConvertColor",
     cc => mat => {
       case (cvtCode, dstCnOpt) => cc.cvtColor(mat, cvtCode, dstCnOpt)
     }

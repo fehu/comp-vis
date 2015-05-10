@@ -24,7 +24,7 @@ object Harris {
   /** Pixel extrapolation method. */
   object BorderType extends ArgDescriptor[BorderExtrapolationMethod]("Border type", "pixel extrapolation method", Optional)
 
-  object Descriptor extends CallDescriptor[CornerDetection, Mat, Params, Mat](
+  object Descriptor extends CallContainer[CornerDetection, Mat, Params, Mat]( "Harris",
     scope => mat => {
       case (blockSize, kSize, k, borderType) => scope.cornerHarris(mat, blockSize, kSize, k.toDouble, borderType)
     }

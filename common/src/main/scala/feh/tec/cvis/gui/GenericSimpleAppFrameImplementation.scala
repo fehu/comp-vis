@@ -11,6 +11,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 import feh.dsl.swing2.{Var, Monitor, Control}
 import feh.dsl.swing2.ComponentExt._
 import feh.tec.cvis.common.cv.BufferedImageColor
+import feh.tec.cvis.common.cv.describe.{CallDescriptor, CallHistory}
 import feh.tec.cvis.gui.FileDrop._
 import feh.util._
 import feh.util.file._
@@ -229,8 +230,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def atomic[Params, Src, R](exec: Src => Params => R): AtomicRunner[Params, Src, R] = new AtomicRunner(params => src => exec(src)(params))
     }
 
-    case class TransformsFor[Src](get: Seq[Runner[_, Src, _]])
-    
 
     // Mat support
     def toMat(img: BufferedImage): Mat
@@ -360,6 +359,32 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
         case CvType.CV_32F if alpha => BufferedImage.TYPE_INT_ARGB -> setInt
       }
     }
+  }
+
+  trait HistorySupport {
+    frame: FrameExec with GenericSimpleAppFrame =>
+
+    trait PanelExecHistory[Src, R] extends PanelExec[Src, R]{
+      conf: GenericConfigurationPanel =>
+
+      def setHResult: ((R, CallHistory[R])) => Unit
+
+      def callDescriptor: CallDescriptor[R]
+      def paramDescriptors: Set[CallHistory.ArgEntry[_]]
+      def getPrevHist: CallHistory[Src]
+
+      protected def historyEntry  = CallHistory.Entry(callDescriptor, paramDescriptors)
+      protected def history       = getPrevHist aggregate historyEntry
+
+      def execH(): (R, CallHistory[R]) = exec() -> history
+    }
+
+
+    def hPanelExec[R](mp: PanelExecHistory[_, R]) {
+      mp.setHResult(mp.execH())
+    }
+
+
   }
 
   trait ConfigurationsPanelBuilder{
