@@ -8,12 +8,13 @@ import feh.dsl.swing2.{Control, Var}
 import feh.tec.cvis.common.cv.Drawing._
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.cv.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.{CallDescriptor, CallHistoryContainer, ArgDescriptor, ArgModifier}
 import feh.tec.cvis.common.cv.{Clustering, TerminationCriteria}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._
-import org.opencv.core.{CvType, Mat, Point}
+import org.opencv.core.{MatOfPoint, CvType, Mat, Point}
 
 import scala.swing.{CheckBox, Component, Dialog}
 
@@ -22,15 +23,22 @@ trait KMeansSupport {
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
 
   trait KMeansSupportFrame extends ConfigurationsPanelBuilder with Clustering {
-    frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
+    frame: GenericSimpleAppFrame
+            with FrameExec
+            with HistorySupport
+            with LayoutDSL
+            with ConfigBuildHelperGUI =>
 
-    protected lazy val clusteringResult = Var(KMeansResult.empty)
+    protected lazy val clusteringResult: Var[CallHistoryContainer[KMeansResult]] =
+      Var(CallHistoryContainer.empty(KMeansResult.empty))
+
+
     protected var initialNClusters: Int
 
 
     trait KMeansPanel
       extends SimpleVerticalPanel
-      with PanelExec[List[((Int, Int), Double)], KMeansResult]
+      with PanelExecHistory[List[Point], KMeansResult]
       with ConfigBuildHelperPanel
     {
 
@@ -38,16 +46,27 @@ trait KMeansSupport {
 
       // get / set
 
-      final type Params = Unit
-      final def getParams() = ()
-
       final def classTag = scala.reflect.classTag[KMeansResult]
 
-      def setResult: (KMeansResult) => Unit = {
+      def setResult: (CallHistoryContainer[KMeansResult]) => Unit = {
         res =>
           clusteringResult set res
           drawClusterCenters()
       }
+
+      lazy val callDescriptor: CallDescriptor[KMeansResult] = CallDescriptor("k-means")
+
+      def params: Set[ArgEntry[_]] = Set(
+        ArgEntry(InitialNClusters, initialNClusters)
+      , ArgEntry(NClustersStep, nClustersStep)
+      , ArgEntry(NClustersMaxTries, nClustersMaxTries)
+      , ArgEntry(CriteriaMaxCount, criteriaMaxCount)
+      , ArgEntry(CriteriaEpsilon, criteriaEpsilon)
+      , ArgEntry(Attempts, attempts)
+      , ArgEntry(CentersInitialPolicy, centersInitialPolicy)
+      , ArgEntry(TargetCompactness, targetCompactness)
+      )
+
 
       def getInitialLabels: Var[Seq[Set[Point]]]
 
@@ -145,16 +164,16 @@ trait KMeansSupport {
         "useInitialLabels" -> Seq(useInitialLabelsControl.component)
       ) ++ mkElems
 
-      lazy val runner = RecursiveRunner[Int, Unit, List[((Int, Int), Double)], KMeansResult]{
+      lazy val runner = RecursiveRunner[Int, Params, List[Point], KMeansResult]{
         _ => iPoints =>
           if(iPoints.length >= initialNClusters){
-            val cData = iPoints.toMatOfPoint.convert(CvType.CV_32F).t()
+            val cData = new MatOfPoint(iPoints: _*).convert(CvType.CV_32F).t()
 
             val best =
               if(useInitialLabels.get){
 
                 val groups = getInitialLabels.get.zipWithIndex
-                val labels = iPoints.map{ case ((i, j), _) => groups.find(_._1.contains(i -> j)).get._2 }
+                val labels = iPoints.map{ p => groups.find(_._1 contains p).get._2 }
 
                 new Mat(iPoints.length, 1, CvType.CV_32SC1) $$ {_.put(0, 0, labels.toArray)}
               }
@@ -185,7 +204,8 @@ trait KMeansSupport {
                                messageType = Dialog.Message.Warning)
             nClust => scala.Right(KMeansResult.empty)
           }
-      }.runner( initial = if(useInitialLabels.get) getInitialLabels.get.length else initialNClusters
+
+    }.runner( initial = if(useInitialLabels.get) getInitialLabels.get.length else initialNClusters
               , maxTries = nClustersMaxTries
               , err = s"Couldn't reach targetCompactness $targetCompactness in $nClustersMaxTries tries")
 
@@ -196,7 +216,7 @@ trait KMeansSupport {
       // draw
 
       def drawClusterCenters(): Unit  = {
-        affectImageMat(img => clusteringResult.get.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
+        affectImageMat(img => clusteringResult.get.value.centers.foreach(p => img.draw.circle(p.swap, 5, Color.blue)))
         repaintImage()
       }
 

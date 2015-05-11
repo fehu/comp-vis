@@ -12,3 +12,4 @@
 
 - [ ] draw shouldn't be called from setResult, it needs it's own mechanism 
 - [ ] refactor HarrisPanel to actually use getSrc, setResult
+- [ ] use params to avoid concurrency problems
