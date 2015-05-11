@@ -11,7 +11,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 import feh.dsl.swing2.{Var, Monitor, Control}
 import feh.dsl.swing2.ComponentExt._
 import feh.tec.cvis.common.cv.BufferedImageColor
-import feh.tec.cvis.common.cv.describe.{CallDescriptor, CallHistory}
+import feh.tec.cvis.common.cv.describe.{CallHistoryContainer, CallDescriptor, CallHistory}
 import feh.tec.cvis.gui.FileDrop._
 import feh.util._
 import feh.util.file._
@@ -246,6 +246,12 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
       def classTag: ClassTag[R]
       def runner: Runner[Params, Src, R]
 
+      protected def throwIfInterrupted()
+    }
+
+    trait PanelExecSimple[Src, R] extends PanelExec[Src, R]{
+      conf: GenericConfigurationPanel =>
+
       def getParams(): Params
       def getSrc: Src
       def setResult: R => Unit
@@ -262,8 +268,8 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
 
 
-    def panelExec[R](mp: PanelExec[_, R]) {
-      mp.setResult(mp.exec())
+    def panelExec[R](mp: PanelExec[_, R]) = mp match {
+      case mps: PanelExecSimple[_, R] => mps.setResult(mps.exec())
     }
     
     def repaintImage() = frame.modified.repaint()
@@ -361,28 +367,32 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     }
   }
 
-  trait HistorySupport {
-    frame: FrameExec with GenericSimpleAppFrame =>
+  trait HistorySupport extends FrameExec{
+    frame: GenericSimpleAppFrame =>
 
     trait PanelExecHistory[Src, R] extends PanelExec[Src, R]{
       conf: GenericConfigurationPanel =>
 
-      def setHResult: ((R, CallHistory[R])) => Unit
+      type Params = CallHistory.Entry[_]
+
+      def getSrc: CallHistoryContainer[Src]
+      def setResult: CallHistoryContainer[R] => Unit
 
       def callDescriptor: CallDescriptor[R]
-      def paramDescriptors: Set[CallHistory.ArgEntry[_]]
-      def getPrevHist: CallHistory[Src]
+      def params: Set[CallHistory.ArgEntry[_]]
 
-      protected def historyEntry  = CallHistory.Entry(callDescriptor, paramDescriptors)
-      protected def history       = getPrevHist aggregate historyEntry
+      protected def historyEntry  = CallHistory.Entry(callDescriptor, params)
 
-      def execH(): (R, CallHistory[R]) = exec() -> history
+      def exec(): CallHistoryContainer[R] = getSrc.affect(historyEntry)(runner.exec(throwIfInterrupted)(historyEntry))
     }
 
 
-    def hPanelExec[R](mp: PanelExecHistory[_, R]) {
-      mp.setHResult(mp.execH())
+    override def panelExec[R](mp: PanelExec[_, R]): Unit = mp match {
+      case peh: PanelExecHistory[_, _]  => hPanelExec(peh)
+      case pe                           => super.panelExec(pe)
     }
+
+    def hPanelExec[R](mp: PanelExecHistory[_, R]) { mp.setResult(mp.exec()) }
 
 
   }

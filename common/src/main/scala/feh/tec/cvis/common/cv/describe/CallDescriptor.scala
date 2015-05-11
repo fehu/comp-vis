@@ -28,7 +28,7 @@ case class CallHistoryContainer[+R](value: R, history: CallHistory[R]){
 }
 
 object CallHistoryContainer{
-  object Empty extends CallHistoryContainer(null, CallHistory.Empty)
+  def empty[T](value: T): CallHistoryContainer[T] = CallHistoryContainer(value, CallHistory.Empty)
 }
 
 object CallHistory{
@@ -43,6 +43,10 @@ object CallHistory{
     def getArg[T](ad: ArgDescriptor[T]): Option[T] = args.find(_.arg == ad).map(_.value.asInstanceOf[T])
 
     def arg[T] = getArg[T] _ andThen (_.get)
+  }
+  
+  object Entry{
+    def apply[R](descr: String): Entry[R] = Entry(CallDescriptor(descr), Set())
   }
 
 }

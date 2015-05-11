@@ -13,7 +13,7 @@ import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.tec.cvis.gui.configurations.{ConfigBuildHelper, Harris}
 import feh.util._
-import org.opencv.core.Mat
+import org.opencv.core.{Point, Mat}
 
 trait HarrisSupport extends Harris{
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
@@ -32,10 +32,11 @@ trait HarrisSupport extends Harris{
 
     protected var originalGray: Mat = null
 
-    type HarrisResult = List[((Int, Int), Double)]
+    type HarrisResult  = List[((Int, Int), Double)]
+    type HarrisFilterd = List[Point]
 
-    protected var harrisResult  : Var[CallHistoryContainer[HarrisResult]] = Var(CallHistoryContainer.Empty)
-    protected var harrisFiltered: Var[CallHistoryContainer[HarrisResult]] = Var(CallHistoryContainer.Empty)
+    protected var harrisResult  : Var[CallHistoryContainer[HarrisResult]]  = Var(CallHistoryContainer.empty(Nil))
+    protected var harrisFiltered: Var[CallHistoryContainer[HarrisFilterd]] = Var(CallHistoryContainer.empty(Nil))
 
     protected var filteredInterestPointsCount: Int = 0
     protected var initialNClusters: Int = 1
@@ -44,7 +45,8 @@ trait HarrisSupport extends Harris{
     object HarrisPanel
       extends SimpleVerticalPanel
       with HarrisConfigurationPanelExec
-      with PanelExecHistory[Mat, Mat]
+      with MatPanelExec
+      with PanelExecSimple[Mat, Mat]
     {
       panel =>
 
@@ -57,14 +59,13 @@ trait HarrisSupport extends Harris{
 
 
       def callDescriptor = describe.Harris.Descriptor
-      def paramDescriptors: Set[ArgEntry[_]] = Set(
+      def params: Set[ArgEntry[_]] = Set(
         ArgEntry(describe.Harris.BlockSize, blockSize)
       , ArgEntry(describe.Harris.KSize, kSize)
       , ArgEntry(describe.Harris.K, k)
       , ArgEntry(ResponseFuncDescriptor, responseFunc)
       )
 
-      def getPrevHist: CallHistory[Mat] = CallHistory.Empty
       def setHResult: ((Mat, CallHistory[Mat])) => Unit = _ => drawHarris()
 
       object ResponseFuncDescriptor extends ArgDescriptor[ResponseFunc]("Response function", null)
@@ -121,7 +122,7 @@ trait HarrisSupport extends Harris{
                                           else if (c > 10)    c / 10
                                           else                1
 
-      def setHarrisFiltered(res: HarrisResult) = {
+      def setHarrisFiltered(res: HarrisFilterd) = {
         harrisFiltered affect ( _.affect(filterHarrisHistory)(_ => res) )
         filteredInterestPointsCount = res.length
         initialNClusters = calcInitialNClusters(filteredInterestPointsCount)
@@ -159,7 +160,7 @@ trait HarrisSupport extends Harris{
       
       def filterHarrisHistory = CallHistory.Entry(FilterHarris, Set(ArgEntry(Threshold, threshold)))
       
-      def filterHarris: HarrisResult => HarrisResult = _.filter(_._2 >= threshold)
+      def filterHarris: HarrisResult => HarrisFilterd = _.withFilter(_._2 >= threshold).map(_._1: Point)
 
       lazy val showFilteredInterestPointsCount  = monitorFor(s"Filtered interest points: $filteredInterestPointsCount").text
 
@@ -173,7 +174,7 @@ trait HarrisSupport extends Harris{
 
       def drawHarris() = {
         if(repaint_?.get) Option(originalGray) map (_.clone()) foreach setImageMat
-        affectImageMat(img => harrisFiltered.get.value.foreach{ case ((i, j), r) => img.draw.circle(j -> i, 1, Color.red) })
+        affectImageMat(img => harrisFiltered.get.value.foreach{ p => img.draw.circle(p.swap, 1, Color.red) })
         repaintImage()
       }
     }
