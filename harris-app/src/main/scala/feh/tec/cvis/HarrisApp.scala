@@ -189,6 +189,9 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
           , imageDescriptors.get
           )
 
+        showHistoryFrameTrigger.component.enabled = false
+        imageDescriptors.onChange{ h => showHistoryFrameTrigger.enabled = h.value.nonEmpty }
+
         def fetchDbInfo(): Future[Seq[(String, Int)]] = db.run(query.namesAndCounts)
 
         def setResult: (IDescriptor) => Unit = d => db.run(query.insert(d))

@@ -58,7 +58,7 @@ trait HarrisSupport extends Harris{
       def setResult: Mat => Unit = _ => drawHarris()
 
 
-      def callDescriptor = describe.Harris.Descriptor
+      def callDescriptor = CallDescriptor(describe.Harris.Descriptor.name)
       def params: Set[ArgEntry[_]] = Set(
         ArgEntry(describe.Harris.BlockSize, blockSize)
       , ArgEntry(describe.Harris.KSize, kSize)
@@ -123,7 +123,7 @@ trait HarrisSupport extends Harris{
                                           else                1
 
       def setHarrisFiltered(res: HarrisFilterd) = {
-        harrisFiltered affect ( _.affect(filterHarrisHistory)(_ => res) )
+        harrisFiltered set harrisResult.get.affect(harrisHistory)(_ => res)
         filteredInterestPointsCount = res.length
         initialNClusters = calcInitialNClusters(filteredInterestPointsCount)
       }
@@ -158,8 +158,9 @@ trait HarrisSupport extends Harris{
 
       lazy val FilterHarris = CallDescriptor("filter harris points of interest")
       
+      def harrisHistory       = CallHistory.Entry(callDescriptor, params)
       def filterHarrisHistory = CallHistory.Entry(FilterHarris, Set(ArgEntry(Threshold, threshold)))
-      
+
       def filterHarris: HarrisResult => HarrisFilterd = _.withFilter(_._2 >= threshold).map(_._1: Point)
 
       lazy val showFilteredInterestPointsCount  = monitorFor(s"Filtered interest points: $filteredInterestPointsCount").text

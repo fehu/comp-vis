@@ -2,8 +2,14 @@ package feh.tec.cvis.common.cv.describe
 
 import scala.reflect.ClassTag
 
-case class ArgDescriptor[T: ClassTag](name: String, description: String, modifiers: ArgModifier[T]*){
+case class ArgDescriptor[T](name: String, description: String, modifiers: ArgModifier[T]*)
+                           (implicit val tag: ClassTag[T])
+{
   def &:(mod: ArgModifier[T]) = ArgDescriptor(name, description, mod +: modifiers: _*)
+
+  override def equals(obj: scala.Any): Boolean = canEqual(obj) && (obj match {
+    case that: ArgDescriptor[_] => this.name == that.name && this.tag == that.tag
+  })
 }
 
 trait ArgModifier[T]{

@@ -3,8 +3,10 @@ package feh.tec.cvis.db
 import java.nio.ByteBuffer
 import java.util.UUID
 
+import feh.util._
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
+import feh.tec.cvis.common.cv.describe.{CallDescriptor, ArgDescriptor, CallHistory}
 import org.opencv.core.{Size, Point}
 import slick.driver.H2Driver.api._
 import slick.lifted.{CanBeQueryCondition, Rep, ProvenShape}
@@ -31,6 +33,7 @@ object SingleChannelDescriptorsWithStats{
 
     def * = (id, name, image, width, height, matTpe, javaTpe, sideLength)
   }
+
 
   class PointDescriptors(tag: Tag)
     extends Table[(UUID, Int, Int, Array[Byte], Double, Double, Double, Double)](tag, "PointDescriptor"){
@@ -59,15 +62,83 @@ object SingleChannelDescriptorsWithStats{
     def * = (descriptorId, pointX, pointY, data, mean, std, range, iqr)
   }
 
+
+  class DescriptorsHistory(tag: Tag) extends Table[(UUID, Int, String)](tag, "DescriptorsHistory"){
+
+    def pk = primaryKey("pk", (descriptorId, entry))
+
+    def descriptorId  = column[UUID]  ("descriptor")
+    def entry         = column[Int]   ("entry")
+    def call          = column[String]("call")
+
+    def descriptor = foreignKey("descriptor_fk", descriptorId, imageDescriptors)(_.id,
+                                                                                 onUpdate=ForeignKeyAction.Restrict,
+                                                                                 onDelete=ForeignKeyAction.Restrict
+                                                                                )
+
+    def * : ProvenShape[(UUID, Int, String)] = (descriptorId, entry, call)
+  }
+
+
+  class HistoryArgs(tag: Tag) extends Table[(UUID, Int, HistoryArgSerialized)](tag, "HistoryArgs"){
+
+    def descriptorId  = column[UUID]  ("descriptor")
+    def entry         = column[Int]   ("entry")
+
+    def name          = column[String]("name")
+    def classTag      = column[String]("tag")
+    def value         = column[String]("value")
+
+    def descriptor = foreignKey("descriptor_fk", descriptorId, descriptorsHistory)(_.descriptorId,
+                                                                                   onUpdate=ForeignKeyAction.Restrict,
+                                                                                   onDelete=ForeignKeyAction.Restrict
+                                                                                  )
+    def entryFK    = foreignKey("entry_fk", entry, descriptorsHistory)(_.entry,
+                                                                       onUpdate=ForeignKeyAction.Restrict,
+                                                                       onDelete=ForeignKeyAction.Restrict
+                                                                      )
+    def idx = index("idx_HistoryArgs", (descriptorId, entry), unique = false)
+
+    def arg = (name, classTag, value) <> ((HistoryArgSerialized.apply _).tupled, HistoryArgSerialized.unapply)
+
+    def * : ProvenShape[(UUID, Int, HistoryArgSerialized)] = (descriptorId, entry, arg)
+  }
+
+
+
+
+
+
+
   object table{
     val imageDescriptors = TableQuery[ImageDescriptors]
     val pointDescriptors = TableQuery[PointDescriptors]
+
+    val descriptorsHistory  = TableQuery[DescriptorsHistory]
+    val historyArgs         = TableQuery[HistoryArgs]
   }
+
+
+
+
+
+
+
 
   object query{
 
     def insert(d: IDescriptor) = {
       val id = UUID.randomUUID()
+      val (dHist, hArgs) = d.interestPointsHistory.toList.reverse.zipWithIndex.map{
+        case (CallHistory.Entry(cDescr, cArgs), i) =>
+          val id = UUID.randomUUID()
+          val dh = (id, i, cDescr.name)
+          val ha = cArgs.map{
+            case argEntry => (id, i, HistoryArgSerialized.create(argEntry))
+          }
+          dh -> ha
+      }.unzip
+
       DBIO.seq(
         imageDescriptors +=( id
                            , d.name
@@ -90,8 +161,11 @@ object SingleChannelDescriptorsWithStats{
             , descr.channel.iqr
             )
         }
+      , descriptorsHistory ++= dHist
+      , historyArgs        ++= hArgs.flatten
       )
     }
+
 
 
     def get(id: UUID): DBIOAction[IDescriptor, NoStream, Effect.Read] = {
@@ -104,22 +178,53 @@ object SingleChannelDescriptorsWithStats{
   
       getIDescr.result flatMap {
         case Vector( (name, image, width, height, matTpe, javaTpe, side) )=>
-          getPDescr.to[List].result map {
+          getPDescr.to[List].result flatMap {
             pdb =>
               val pts = pdb.map {
                 case (x, y, data, mean, std, range, iqr) =>
                   (x -> y: Point) -> ADescriptor(side, toDoubles(side, data), mean, std, range, iqr)
               }
-              IDescriptor(name, side, matTpe, javaTpe, new Size(width, height), image, pts.toMap)(Some(id))
+              history(id) map{
+                hist => IDescriptor(name, side, matTpe, javaTpe, new Size(width, height), image, pts.toMap, hist)(Some(id))
+              }
           }
       }
     }
 
+
     
     def namesAndCounts: DBIOAction[Seq[(String, Int)], NoStream, Effect.Read] = nameAndCountQuery.result
 
+
+
     def nameAndCountQuery = imageDescriptors.map{
       iD => iD.name -> pointDescriptors.filter(_.descriptorId === iD.id).length
+    }
+
+
+    def historyQuery(id: UUID) = descriptorsHistory.withFilter(_.descriptorId === id).flatMap{
+      dh =>
+        historyArgs.withFilter(_.descriptorId === id).withFilter(_.entry === dh.entry).map{
+          ha =>
+            (dh.entry, dh.call, ha.arg)
+        }
+    }
+
+
+    def history(id: UUID): DBIOAction[CallHistory[Map[Point, ADescriptor]], NoStream, Effect.Read] ={
+      val entriesA = historyQuery(id).result.map {
+        _.groupBy(_._1).toSeq.sortBy(_._1)
+         .map{
+              r =>
+                val (calls, args) = r._2.map{ case (_, call, arg) => call -> arg }.unzip
+                val call = calls.distinct.ensuring(_.length == 1).head
+                CallHistory.Entry(CallDescriptor(call), args.toSet.map(HistoryArgSerialized.build))
+            }
+      }
+
+      entriesA.map(_.toList.reverse |> { entries =>
+        CallHistory(entries.head.asInstanceOf[CallHistory.Entry[Map[Point, ADescriptor]]], entries.tail)
+      })
     }
 
 
@@ -142,6 +247,7 @@ object SingleChannelDescriptorsWithStats{
               )
 
         }
+
 
 
     def searchByQuery ( mean      : Option[Double]

@@ -73,7 +73,6 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
     listenTo(label.mouse.clicks)
     reactions += {
       case ev: MouseClicked /*(_, _, _ /*??*/, _, _)*/ =>
-        println("AA")
         new FileChooser(new File(sys.props("user.home"))) $$ {
         fch =>
           fch.fileFilter = new FileNameExtensionFilter("images", "jpg", "jpeg", "png", "gif")

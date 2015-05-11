@@ -15,7 +15,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.swing.{Component, ScrollPane, Table}
 
-trait AdminSupport {
+trait AdminSupport extends ShowHistorySupport{
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
 
   trait AdminSupportFrame extends ConfigurationsPanelBuilder {
@@ -60,15 +60,21 @@ trait AdminSupport {
           override def isCellEditable(row: Int, column: Int) = false
         }
       }
+
       lazy val dbInfoMonitor = Monitor.custom(dbInfo, new Table){
         c =>      c.model = dbInfoModel(Nil)
       }{
         c => t => c.model = dbInfoModel(t)
       }
 
+      lazy val showHistoryFrameTrigger = triggerFor{
+        ShowHistoryFrame(getSrc._6.history).open()
+      }.button("Show History")
+
       lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
-        "imageName" -> (imageNameControl  -> label("Image name"))
-      , "listDb"    -> (listDbTrigger     -> label(null))
+        "imageName"         -> (imageNameControl  -> label("Image name"))
+      , "showHistoryFrame"  -> (showHistoryFrameTrigger -> label(null))
+      , "listDb"            -> (listDbTrigger     -> label(null))
       )
 
       override lazy val elems: Seq[(String, Seq[Component])] = mkElems ++ Seq(
