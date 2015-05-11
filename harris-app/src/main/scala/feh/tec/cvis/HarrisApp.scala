@@ -8,6 +8,7 @@ import java.util.UUID
 import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
+import feh.tec.cvis.common.cv.describe.{CallHistoryContainer, CallHistory}
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.db.{HasDescriptorCache, HasDbConnections}
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
@@ -40,6 +41,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
     new SimpleFrame(image, frameTitle, defaultSize, regNewFrame, unregAFrame)
       with ConfigurationsPanelBuilder
       with FrameExec
+      with HistorySupport
       with HarrisSupportFrame
       with KMeansSupportFrame
       with GroupingSupportFrame
@@ -55,7 +57,8 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       def dbAccessTimeout: FiniteDuration = 200.millis
 
-      implicit val db = DbConnection(Database.forConfig("h2harris"))
+//      implicit val db = DbConnection(Database.forConfig("h2harris"))
+      implicit val db = DbConnection(Database.forConfig("h2harrisDev")); println("using `dev` db")
 
       override def stop(): Unit = {
         db.close(dbAccessTimeout)
@@ -66,7 +69,8 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 //      LayoutDebug = true
 
-      protected val distinctInterestPoints: Var[Set[(Int, Int)]] = Var(Set())
+      protected val distinctInterestPoints: Var[CallHistoryContainer[Set[(Int, Int)]]] =
+        Var(CallHistoryContainer.empty(Set()))
 
       type Config = SimpleVerticalPanel with PanelExec[_, _]
 
@@ -76,7 +80,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
-        , "describe"    -> DescriptorsPanel
+//        , "describe"    -> DescriptorsPanel
         , "admin"       -> AdminPanel
         , "user"        -> UserPanel
       )
@@ -85,10 +89,10 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       object GroupingPanel extends GroupingPanel{
 
-        def getSrc = harrisFiltered.map(_._1: Point)
+        def getSrc = harrisFiltered.get
 
         override def drawGroupsCenters(): Unit = {
-          KMeansPanel.getInitialLabels set groupsCentersWithPoints.get.map(_._2) // todo: should be in another place, not in draw
+          KMeansPanel.getInitialLabels set groupsCentersWithPoints.get.value.map(_._2) // todo: should be in another place, not in draw
 
           if(repaint_?.get) HarrisPanel.drawHarris()
           super.drawGroupsCenters()
@@ -98,7 +102,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 
       object KMeansPanel extends KMeansPanel {
-        def getSrc = harrisFiltered
+        def getSrc = harrisFiltered.get
 
         lazy val getInitialLabels: Var[Seq[Set[Point]]] = Var(Nil)
 
@@ -126,11 +130,11 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
         protected lazy val sourcesAvailable = Var(Set[Source](Source.None))
 
-        groupsCentersWithPoints.onChange(l => if(l.isEmpty) sourcesAvailable.affect(_ - Source.Grouping)
-                                              else          sourcesAvailable.affect(_ + Source.Grouping))
+        groupsCentersWithPoints.onChange(l => if(l.value.isEmpty) sourcesAvailable.affect(_ - Source.Grouping)
+                                              else                sourcesAvailable.affect(_ + Source.Grouping))
 
-        clusteringResult       .onChange(l => if(l.isEmpty) sourcesAvailable.affect(_ - Source.KMeans)
-                                              else          sourcesAvailable.affect(_ + Source.KMeans))
+        clusteringResult       .onChange(l => if(l.value.isEmpty) sourcesAvailable.affect(_ - Source.KMeans)
+                                              else                sourcesAvailable.affect(_ + Source.KMeans))
 
         sourcesAvailable.onChange(_ => sourceControl.component.tryUpdate())
 
@@ -142,29 +146,27 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "maxPairToPairInClusterDistance2" -> maxPairToPairInClusterDistanceControl
         )
 
-
-        def getSrc: List[Point] = gcSrc.get match {
-          case Source.Grouping  => groupsCentersWithPoints.get.map(_._1)
-          case Source.KMeans    => clusteringResult.get.centers
-          case Source.None      => Nil
+        def getSrc: CallHistoryContainer[List[Point]] = gcSrc.get match {
+          case Source.Grouping  => groupsCentersWithPoints.get.affect(CallHistory.Entry("take group center"))(_.map(_._1))
+          case Source.KMeans    => clusteringResult.get.affect(CallHistory.Entry("take cluster centers"))(_.centers)
+          case Source.None      => CallHistoryContainer.empty(Nil)
         }
 
-        override def setResult: (List[(Point, Set[Point])]) => Unit = v => {
-          distinctInterestPoints set v.map(_._1.pairInt).toSet
-          drawGroupsCenters()
-        }
+
+        override def setResult: CallHistoryContainer[List[(Point, Set[Point])]] => Unit = {
+          res =>
+            distinctInterestPoints set res.affect(CallHistory.Entry("points to (Int, Int)"))(_.map(_._1.pairInt).toSet)
+            drawGroupsCenters()
+          }
 
         override def drawGroupsCenters(): Unit = {
           if(repaint_?.get) HarrisPanel.drawHarris()
 
-          affectImageMat(img => distinctInterestPoints.get.foreach{ p => img.draw.circle(p.swap, maxPairToPairInClusterDistance.toInt, Color.cyan, thickness = 2) })
+          affectImageMat(img => distinctInterestPoints.get.value.foreach{
+             p => img.draw.circle(p.swap, maxPairToPairInClusterDistance.toInt, Color.cyan, thickness = 2)
+           })
           repaintImage()
         }
-      }
-
-
-      object DescriptorsPanel extends DescriptorsPanel{
-        def getSrc: (Mat, Set[Point]) = originalGray -> distinctInterestPoints.get.map(x => x: Point)
       }
 
 
