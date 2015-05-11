@@ -6,7 +6,7 @@ import java.util.UUID
 import javax.swing.JSpinner
 
 import feh.tec.cvis.common.cv._
-import feh.tec.cvis.common.cv.describe.{ArgModifier, ArgDescriptor}
+import feh.tec.cvis.common.cv.describe.{CallHistoryContainer, ArgModifier, ArgDescriptor}
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.util._
 import feh.dsl.swing2.{Monitor, Var, Control}
@@ -32,12 +32,12 @@ trait UserSupport {
 
     trait UserPanel
       extends SimpleVerticalPanel
-      with PanelExec[Map[Point, ADescriptor], Matches]
+      with PanelExecSimple[CallHistoryContainer[Map[Point, ADescriptor]], Matches]
       with ConfigBuildHelperPanel
       with ColorConverting
     {
 
-      def steps = getSrc.size
+      def steps = getSrc.value.size
 
       def setResult: Matches => Unit = matches.set
       def classTag = scala.reflect.classTag[Matches]
@@ -199,10 +199,10 @@ trait UserSupport {
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def runner: Runner[Params, Map[Point, ADescriptor], Matches] = Runner(
+      def runner: Runner[Params, CallHistoryContainer[Map[Point, ADescriptor]], Matches] = Runner(
         nextStep => {
           case (sOpts, sPrec) =>
-            _.map{
+            _.value.map{
                 case (p, ad) =>
                   val mean  = if(sOpts.byMean)  Some(ad.mean)   else None
                   val std   = if(sOpts.byStd)   Some(ad.std)    else None

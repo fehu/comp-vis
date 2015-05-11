@@ -11,7 +11,8 @@ import feh.dsl.swing2.{Monitor, Var}
 import feh.tec.cvis.common.AreaDescriptor.{HasStatistics, SingleChannel}
 import feh.tec.cvis.common.ChannelDescriptor.Statistics
 import feh.tec.cvis.common.cv.Helper._
-import feh.tec.cvis.common.cv.describe.ArgDescriptor
+import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.{CallHistory, CallDescriptor, CallHistoryContainer, ArgDescriptor}
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
 import feh.tec.cvis.common.{AreaDescriptor, ChannelDescriptor, ImageDescriptor}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
@@ -29,22 +30,30 @@ trait DescriptorsSupport {
   import DescriptorsSupport._
   
   trait DescriptorsSupportFrame extends ConfigurationsPanelBuilder with MatSupport {
-    frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
+    frame: GenericSimpleAppFrame
+            with FrameExec
+            with LayoutDSL
+            with HistorySupport
+            with ConfigBuildHelperGUI =>
 
-    lazy val imageDescriptors: Var[Map[Point, ADescriptor]] = Var(Map())
+    lazy val imageDescriptors: Var[CallHistoryContainer[Map[Point, ADescriptor]]] = Var(CallHistoryContainer.empty(Map()))
 
     trait DescriptorsPanel
       extends SimpleVerticalPanel
-      with PanelExec[(Mat, Set[Point]), Seq[(Point, ADescriptor)]]
+      with PanelExecHistory[(Mat, Set[Point]), Seq[(Point, ADescriptor)]]
       with ConfigBuildHelperPanel
     {
-      type Params = Int // Descriptor side size
-
       def steps = 1
 
       def classTag    = scala.reflect.classTag[Seq[(Point, ADescriptor)]]
-      def getParams() = descriptorSideSize.get
-      def setResult   = imageDescriptors set _.toMap
+
+      def params: Set[ArgEntry[_]] = Set( ArgEntry(DescriptorSideSize, descriptorSideSize.get) )
+
+      def callDescriptor: CallDescriptor[Seq[(Point, ADescriptor)]] = CallDescriptor("descriptors")
+
+      def setResult: (CallHistoryContainer[Seq[(Point, ADescriptor)]]) => Unit =
+        imageDescriptors set _.affect(CallHistory.Entry("toMap"))(_.toMap)
+
 
 
       lazy val descriptorSideSize     = Var(1)
@@ -80,7 +89,7 @@ trait DescriptorsSupport {
       }{
         c =>
           t =>
-            c.model = descriptorGroupsInfoModel(t.toSeq)
+            c.model = descriptorGroupsInfoModel(t.value.toSeq)
       }
 
       lazy val formBuilders: Seq[(String, (AbstractDSLBuilder, DSLLabelBuilder[_]))] = Seq(
@@ -116,10 +125,10 @@ trait DescriptorsSupport {
 
       lazy val runner: Runner[Params, (Mat, Set[Point]), Seq[(Point, ADescriptor)]] = Runner(
       nextStep =>
-        sideSize =>
+        params =>
         {
           case (img, iPoints) => iPoints.toSeq
-                                  .zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize, sideSize))
+                                  .zipMap(mkDescriptor(img.convert(CvType.CV_64F).normalize /* todo: normalize? */, params.arg(DescriptorSideSize)))
                                   .filter(_._2.isDefined)
                                   .mapVals(_.get)
         }
@@ -131,9 +140,6 @@ trait DescriptorsSupport {
 
 object DescriptorsSupport{
 
-//  type IDescriptor = ImageDescriptor {
-//    type ADescriptor = DescriptorsSupport.ADescriptor
-//  }
 
   case class IDescriptor( name: String
                         , sideLength: Int
@@ -142,6 +148,7 @@ object DescriptorsSupport{
                         , originalSize: Size
                         , originalImage: Array[Byte]
                         , interestPoints: Map[Point, ADescriptor]
+                        , interestPointsHistory: CallHistory[Map[Point, ADescriptor]]
                         )
                         (val id: Option[UUID] = None) extends ImageDescriptor
   {

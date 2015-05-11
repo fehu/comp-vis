@@ -5,6 +5,7 @@ import javax.swing.table.DefaultTableModel
 import feh.dsl.swing2.ComponentExt._
 import feh.dsl.swing2.{Monitor, Var}
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
+import feh.tec.cvis.common.cv.describe.CallHistoryContainer
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import org.opencv.core.Point
@@ -22,7 +23,7 @@ trait AdminSupport {
 
     trait AdminPanel
       extends SimpleVerticalPanel
-      with PanelExec[(Int, Int, Int, Int, Array[Byte], Map[Point, ADescriptor]), IDescriptor]
+      with PanelExecSimple[(Int, Int, Int, Int, Array[Byte], CallHistoryContainer[Map[Point, ADescriptor]]), IDescriptor]
       with ConfigBuildHelperPanel
     {
       type Params  = String // image name
@@ -78,17 +79,18 @@ trait AdminSupport {
 
       protected def throwIfInterrupted(): Unit = if(interrupted_?) throw Interrupted
 
-      def runner: Runner[Params, (Int, Int, Int, Int, Array[Byte], Map[Point, ADescriptor]), IDescriptor] = Runner(
+      def runner: Runner[Params, (Int, Int, Int, Int, Array[Byte], CallHistoryContainer[Map[Point, ADescriptor]]), IDescriptor] = Runner(
         nextStep =>
           name => {
             case (width, height, matTpe, javaTpe, imgBytes, descriptorsMap) => IDescriptor(
                                                                             name
-                                                                          , descriptorsMap.values.head.sideLength
+                                                                          , descriptorsMap.value.values.head.sideLength
                                                                           , matTpe
                                                                           , javaTpe
                                                                           , new org.opencv.core.Size(width, height)
                                                                           , imgBytes
-                                                                          , descriptorsMap
+                                                                          , descriptorsMap.value
+                                                                          , descriptorsMap.history
                                                                           )()
           }
       )

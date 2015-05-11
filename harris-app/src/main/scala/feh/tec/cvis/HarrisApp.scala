@@ -80,7 +80,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
-//        , "describe"    -> DescriptorsPanel
+        , "describe"    -> DescriptorsPanel
         , "admin"       -> AdminPanel
         , "user"        -> UserPanel
       )
@@ -170,11 +170,17 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       }
 
 
+      object DescriptorsPanel extends DescriptorsPanel{
+        def getSrc: CallHistoryContainer[(Mat, Set[Point])] = distinctInterestPoints.get
+                .affect(CallHistory.Entry("mk points from pairs"))(pts => originalGray -> pts.map(x => x: Point))
+      }
+
+
       object AdminPanel extends AdminPanel{
 
         def dbAccessTimeout = frame.dbAccessTimeout
 
-        def getSrc: (Int, Int, Int, Int, Array[Byte], Map[Point, ADescriptor]) =
+        def getSrc: (Int, Int, Int, Int, Array[Byte], CallHistoryContainer[Map[Point, ADescriptor]]) =
           ( originalMat.width()
           , originalMat.height()
           , originalMat.`type`()
@@ -190,7 +196,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 
       object UserPanel extends UserPanel{
-        def getSrc: Map[Point, ADescriptor] = imageDescriptors.get
+        def getSrc: CallHistoryContainer[Map[Point, ADescriptor]] = imageDescriptors.get
 
 
         def fetchDescriptor(id: UUID)= Await.result(descriptorCache.get(id), frame.dbAccessTimeout)
