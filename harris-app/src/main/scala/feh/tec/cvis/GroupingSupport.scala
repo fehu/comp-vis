@@ -3,11 +3,12 @@ package feh.tec.cvis
 import java.awt.Color
 
 import feh.dsl.swing2.Var
+import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
 import feh.tec.cvis.common.cv.{Helper, Drawing}
 import Drawing._
 import Helper.PointNumericImplicits._
 import Helper._
-import feh.tec.cvis.common.cv.describe.{ArgDescriptor, ArgModifier}
+import feh.tec.cvis.common.cv.describe._
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import feh.util._
@@ -19,27 +20,36 @@ trait GroupingSupport {
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
 
   trait GroupingSupportFrame extends ConfigurationsPanelBuilder {
-    frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
+    frame: GenericSimpleAppFrame
+            with FrameExec
+            with LayoutDSL
+            with HistorySupport
+            with ConfigBuildHelperGUI =>
 
-    protected lazy val groupsCentersWithPoints: Var[List[(Point, Set[Point])]] = Var(Nil)
+    protected lazy val groupsCentersWithPoints: Var[CallHistoryContainer[List[(Point, Set[Point])]]] =
+      Var(CallHistoryContainer.empty(Nil))
 
     trait GroupingPanel
       extends SimpleVerticalPanel
-      with PanelExec[List[Point], List[(Point, Set[Point])]]
+      with PanelExecHistory[List[Point], List[(Point, Set[Point])]]
       with ConfigBuildHelperPanel
     {
-      type Params = Double // max in-cluster distance
-
       def steps = 1
-
-      def getParams() = maxPairToPairInClusterDistance
 
       def setResult = v => {
         groupsCentersWithPoints set v
         drawGroupsCenters()
       }
+
       def classTag = scala.reflect.classTag[List[(Point, Set[Point])]]
 
+      def callDescriptor = GroupingDescriptor
+
+      def params: Set[ArgEntry[_]] = Set(
+        ArgEntry(MaxPairToPairInClusterDistance, maxPairToPairInClusterDistance)
+      )
+
+      object GroupingDescriptor extends CallDescriptor[List[(Point, Set[Point])]]{ def name = "Grouping" }
 
 
       object MaxPairToPairInClusterDistance extends ArgDescriptor[Double]("Max pair-to-pair in-cluster distance", null, ArgModifier.Positive)
@@ -67,7 +77,7 @@ trait GroupingSupport {
                                                              another <- centers
                                                              if another != point
                                                              dist = point.distance[EuclideanDistance](another)
-                                                             if dist <= maxDist * 2
+                                                             if dist <= maxDist.arg(MaxPairToPairInClusterDistance) * 2
                                                            } yield point -> another
 
                                                            if(pts.isEmpty) List(point -> point) else pts
@@ -92,7 +102,7 @@ trait GroupingSupport {
                          }
 
       def drawGroupsCenters()  = {
-        affectImageMat(img => groupsCentersWithPoints.get.foreach{ p => img.draw.circle(p._1.swap, maxPairToPairInClusterDistance.toInt, Color.green) })
+        affectImageMat(img => groupsCentersWithPoints.get.value.foreach{ p => img.draw.circle(p._1.swap, maxPairToPairInClusterDistance.toInt, Color.green) })
         repaintImage()
       }
 
