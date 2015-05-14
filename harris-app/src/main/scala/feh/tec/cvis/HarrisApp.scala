@@ -8,7 +8,8 @@ import java.util.UUID
 import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
-import feh.tec.cvis.common.cv.describe.{CallHistoryContainer, CallHistory}
+import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.{ArgDescriptor, CallHistoryContainer, CallHistory}
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.db.{HasDescriptorCache, HasDbConnections}
 import feh.tec.cvis.db.SingleChannelDescriptorsWithStats._
@@ -67,7 +68,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         super.stop()
       }
 
-      db.tryCreateTables( (table.imageDescriptors.schema ++ table.pointDescriptors.schema).create )
+      db.tryCreateTables( table.create )
 
 //      LayoutDebug = true
 
@@ -109,7 +110,11 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 
       object KMeansPanel extends KMeansPanel {
-        def getSrc = harrisFiltered.get
+        def getSrc = if(useInitialLabels.get) CallHistoryContainer(harrisFiltered.get.value,
+                                                                   groupsCentersWithPoints.get.history
+                                                                    .asInstanceOf[CallHistory[HarrisFilterd]]
+                                                                  )
+                     else harrisFiltered.get
 
         lazy val getInitialLabels: Var[Seq[Set[Point]]] = Var(Nil)
 
@@ -131,7 +136,14 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
           case object None      extends Source{ override def toString = "[None]" }
           case object Grouping  extends Source{ override def toString = "grouping" }
           case object KMeans    extends Source{ override def toString = "k-means" }
+
+          object Descriptor extends ArgDescriptor[Source]("Source", null)
         }
+
+
+        override def params: Set[ArgEntry[_]] = super.params ++ Set(
+          ArgEntry(Source.Descriptor, gcSrc.get)
+        )
 
         lazy val gcSrc: Var[Source] = Var(Source.None)
 

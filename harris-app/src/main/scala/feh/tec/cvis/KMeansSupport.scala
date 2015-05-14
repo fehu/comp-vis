@@ -63,7 +63,7 @@ trait KMeansSupport {
       , ArgEntry(CriteriaMaxCount, criteriaMaxCount)
       , ArgEntry(CriteriaEpsilon, criteriaEpsilon)
       , ArgEntry(Attempts, attempts)
-      , ArgEntry(CentersInitialPolicy, centersInitialPolicy)
+      , ArgEntry(CentersInitialPolicy, centersPolicy)
       , ArgEntry(TargetCompactness, targetCompactness)
       )
 
@@ -160,6 +160,8 @@ trait KMeansSupport {
 
       // running
 
+      def centersPolicy = if(useInitialLabels.get) CentersPolicy.InitialLabels else centersInitialPolicy
+
       override lazy val elems: Seq[(String, Seq[Component])] = Seq(
         "useInitialLabels" -> Seq(useInitialLabelsControl.component)
       ) ++ mkElems
@@ -179,9 +181,6 @@ trait KMeansSupport {
               }
               else new Mat()
 
-
-            def centersPolicy = if(best.empty()) centersInitialPolicy
-                                else CentersPolicy.InitialLabels
             def kMeans(nClusters: Int) = {
               kmeans(cData, nClusters, criteria, attempts, centersPolicy, best)
             }

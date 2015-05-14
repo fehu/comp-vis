@@ -38,7 +38,7 @@ object SingleChannelDescriptorsWithStats{
   class PointDescriptors(tag: Tag)
     extends Table[(UUID, Int, Int, Array[Byte], Double, Double, Double, Double)](tag, "PointDescriptor"){
 
-    def pk = primaryKey("pk", (descriptorId, pointX, pointY))
+    def pk = primaryKey("pk_PointDescriptor", (descriptorId, pointX, pointY))
 
     def descriptorId = column[UUID] ("descriptor_id")
     def pointX       = column[Int]  ("point_x")
@@ -51,7 +51,7 @@ object SingleChannelDescriptorsWithStats{
     def range = column[Double]      ("range")
     def iqr   = column[Double]      ("iqr")
 
-    def descriptor = foreignKey("descriptor_fk", descriptorId, imageDescriptors)(_.id,
+    def descriptor = foreignKey("descriptor_fk_PointDescriptor", descriptorId, imageDescriptors)(_.id,
                                                                                  onUpdate=ForeignKeyAction.Restrict,
                                                                                  onDelete=ForeignKeyAction.Restrict
                                                                                 )
@@ -65,13 +65,13 @@ object SingleChannelDescriptorsWithStats{
 
   class DescriptorsHistory(tag: Tag) extends Table[(UUID, Int, String)](tag, "DescriptorsHistory"){
 
-    def pk = primaryKey("pk", (descriptorId, entry))
+    def pk = primaryKey("pk_DescriptorsHistory", (descriptorId, entry))
 
     def descriptorId  = column[UUID]  ("descriptor")
     def entry         = column[Int]   ("entry")
     def call          = column[String]("call")
 
-    def descriptor = foreignKey("descriptor_fk", descriptorId, imageDescriptors)(_.id,
+    def descriptor = foreignKey("descriptor_fk_DescriptorsHistory", descriptorId, imageDescriptors)(_.id,
                                                                                  onUpdate=ForeignKeyAction.Restrict,
                                                                                  onDelete=ForeignKeyAction.Restrict
                                                                                 )
@@ -89,7 +89,7 @@ object SingleChannelDescriptorsWithStats{
     def classTag      = column[String]("tag")
     def value         = column[String]("value")
 
-    def descriptor = foreignKey("descriptor_fk", descriptorId, descriptorsHistory)(_.descriptorId,
+    def descriptor = foreignKey("descriptor_fk_HistoryArgs", descriptorId, descriptorsHistory)(_.descriptorId,
                                                                                    onUpdate=ForeignKeyAction.Restrict,
                                                                                    onDelete=ForeignKeyAction.Restrict
                                                                                   )
@@ -116,6 +116,12 @@ object SingleChannelDescriptorsWithStats{
 
     val descriptorsHistory  = TableQuery[DescriptorsHistory]
     val historyArgs         = TableQuery[HistoryArgs]
+
+    def create = (   imageDescriptors.schema
+                  ++ pointDescriptors.schema
+                  ++ descriptorsHistory.schema
+                  ++ historyArgs.schema
+                 ).create
   }
 
 
@@ -131,7 +137,7 @@ object SingleChannelDescriptorsWithStats{
       val id = UUID.randomUUID()
       val (dHist, hArgs) = d.interestPointsHistory.toList.reverse.zipWithIndex.map{
         case (CallHistory.Entry(cDescr, cArgs), i) =>
-          val id = UUID.randomUUID()
+//          val id = UUID.randomUUID()
           val dh = (id, i, cDescr.name)
           val ha = cArgs.map{
             case argEntry => (id, i, HistoryArgSerialized.create(argEntry))
