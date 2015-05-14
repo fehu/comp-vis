@@ -3,7 +3,7 @@ package feh.tec.cvis
 import java.awt.Color
 
 import feh.dsl.swing2.Var
-import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
 import feh.tec.cvis.common.cv.{Helper, Drawing}
 import Drawing._
 import Helper.PointNumericImplicits._
@@ -46,7 +46,7 @@ trait GroupingSupport {
       def callDescriptor = GroupingDescriptor
 
       def params: Set[ArgEntry[_]] = Set(
-        ArgEntry(MaxPairToPairInClusterDistance, maxPairToPairInClusterDistance)
+        TypedArgEntry(MaxPairToPairInClusterDistance, maxPairToPairInClusterDistance)
       )
 
       object GroupingDescriptor extends CallDescriptor[List[(Point, Set[Point])]]{ def name = "Grouping" }

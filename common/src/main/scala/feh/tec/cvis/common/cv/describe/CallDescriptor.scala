@@ -37,12 +37,26 @@ object CallHistory{
     override def aggregate[Res](entry: Entry[Res]): CallHistory[Res] = CallHistory(entry, Nil)
   }
   
-  case class ArgEntry[T](arg: ArgDescriptor[T], value: T)
-  
-  case class Entry[+Res](call: CallDescriptor[Res], args: Set[ArgEntry[_]]){
-    def getArg[T](ad: ArgDescriptor[T]): Option[T] = args.find(_.arg == ad).map(_.value.asInstanceOf[T])
+  trait ArgEntry[T] {
+    def arg: ArgDescriptor[T]
+    def valueOpt: Option[T]
+    def stringValue: String
+  }
+  case class TypedArgEntry[T](arg: ArgDescriptor[T], value: T) extends ArgEntry[T]{
+    def stringValue = value.toString
+    def valueOpt: Option[T] = Some(value)
+  }
 
-    def arg[T] = getArg[T] _ andThen (_.get)
+  case class StringArgEntry[T](arg: ArgDescriptor[T], stringValue: String) extends ArgEntry[T]{
+    def valueOpt: Option[T] = None
+  }
+
+  case class Entry[+Res](call: CallDescriptor[Res], args: Set[ArgEntry[_]]){
+    def getArg[T](ad: ArgDescriptor[T]): Option[T] = args.find(_.arg == ad).map(_.valueOpt.map(_.asInstanceOf[T])).flatten
+    def getStringArg(ad: ArgDescriptor[_]): Option[String] = args.find(_.arg == ad).map(_.stringValue)
+
+    def arg[T]        = getArg[T]     _ andThen (_.get)
+    def stringArg[T]  = getStringArg  _ andThen (_.get)
   }
   
   object Entry{

@@ -8,7 +8,7 @@ import feh.dsl.swing2.{Control, Var}
 import feh.tec.cvis.common.cv.Drawing._
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
 import feh.tec.cvis.common.cv.describe.{CallDescriptor, CallHistoryContainer, ArgDescriptor, ArgModifier}
 import feh.tec.cvis.common.cv.{Clustering, TerminationCriteria}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
@@ -57,14 +57,14 @@ trait KMeansSupport {
       lazy val callDescriptor: CallDescriptor[KMeansResult] = CallDescriptor("k-means")
 
       def params: Set[ArgEntry[_]] = Set(
-        ArgEntry(InitialNClusters, initialNClusters)
-      , ArgEntry(NClustersStep, nClustersStep)
-      , ArgEntry(NClustersMaxTries, nClustersMaxTries)
-      , ArgEntry(CriteriaMaxCount, criteriaMaxCount)
-      , ArgEntry(CriteriaEpsilon, criteriaEpsilon)
-      , ArgEntry(Attempts, attempts)
-      , ArgEntry(CentersInitialPolicy, centersPolicy)
-      , ArgEntry(TargetCompactness, targetCompactness)
+        TypedArgEntry(InitialNClusters, initialNClusters)
+      , TypedArgEntry(NClustersStep, nClustersStep)
+      , TypedArgEntry(NClustersMaxTries, nClustersMaxTries)
+      , TypedArgEntry(CriteriaMaxCount, criteriaMaxCount)
+      , TypedArgEntry(CriteriaEpsilon, criteriaEpsilon)
+      , TypedArgEntry(Attempts, attempts)
+      , TypedArgEntry(CentersInitialPolicy, centersPolicy)
+      , TypedArgEntry(TargetCompactness, targetCompactness)
       )
 
 

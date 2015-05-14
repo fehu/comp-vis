@@ -13,7 +13,7 @@ trait ShowHistorySupport {
     protected val data: Array[Array[Any]]  = hist.toList.flatMap{
       case null => Nil
       case CallHistory.Entry(descr, args) =>
-        args.toList.map(a => Array[Any](a.arg.name, a.arg.tag.toString, a.value.toString)) match {
+        args.toList.map(a => Array[Any](a.arg.name, a.arg.tag.toString, a.stringValue)) match {
           case Nil => List(descr.name +: Array.fill[Any](3)(""))
           case head :: tail => (descr.name +: head) :: tail.map("" +: _)
         }

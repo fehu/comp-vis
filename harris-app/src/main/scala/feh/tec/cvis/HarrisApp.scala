@@ -8,7 +8,7 @@ import java.util.UUID
 import feh.dsl.swing2.Var
 import feh.tec.cvis.DescriptorsSupport.{ADescriptor, IDescriptor}
 import feh.tec.cvis.common.cv.Helper._
-import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
 import feh.tec.cvis.common.cv.describe.{ArgDescriptor, CallHistoryContainer, CallHistory}
 import feh.tec.cvis.common.cv.{CV, CornerDetection, Drawing}
 import feh.tec.cvis.db.{HasDescriptorCache, HasDbConnections}
@@ -142,7 +142,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
 
         override def params: Set[ArgEntry[_]] = super.params ++ Set(
-          ArgEntry(Source.Descriptor, gcSrc.get)
+          TypedArgEntry(Source.Descriptor, gcSrc.get)
         )
 
         lazy val gcSrc: Var[Source] = Var(Source.None)

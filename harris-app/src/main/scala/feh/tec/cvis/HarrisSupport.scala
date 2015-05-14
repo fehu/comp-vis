@@ -7,7 +7,7 @@ import feh.tec.cvis.common.cv.Drawing._
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv._
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
-import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
 import feh.tec.cvis.common.cv.describe.{ArgDescriptor, CallDescriptor, CallHistory, CallHistoryContainer}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
@@ -60,10 +60,10 @@ trait HarrisSupport extends Harris with InterestPointSearchSupport{
 
       def callDescriptor = CallDescriptor(describe.Harris.Descriptor.name)
       def params: Set[ArgEntry[_]] = Set(
-        ArgEntry(describe.Harris.BlockSize, blockSize)
-      , ArgEntry(describe.Harris.KSize, kSize)
-      , ArgEntry(describe.Harris.K, k)
-      , ArgEntry(ResponseFuncDescriptor, responseFunc)
+        TypedArgEntry(describe.Harris.BlockSize, blockSize)
+      , TypedArgEntry(describe.Harris.KSize, kSize)
+      , TypedArgEntry(describe.Harris.K, k)
+      , TypedArgEntry(ResponseFuncDescriptor, responseFunc)
       )
 
       def setHResult: ((Mat, CallHistory[Mat])) => Unit = _ => drawHarris()
@@ -157,7 +157,7 @@ trait HarrisSupport extends Harris with InterestPointSearchSupport{
       lazy val FilterHarris = CallDescriptor("filter harris points of interest")
       
       def harrisHistory       = CallHistory.Entry(callDescriptor, params)
-      def filterHarrisHistory = CallHistory.Entry(FilterHarris, Set(ArgEntry(Threshold, threshold)))
+      def filterHarrisHistory = CallHistory.Entry(FilterHarris, Set(TypedArgEntry(Threshold, threshold)))
 
       def filterHarris: HarrisResult => HarrisFilterd = _.withFilter(_._2 >= threshold).map(_._1: Point)
 

@@ -11,7 +11,7 @@ import feh.dsl.swing2.{Monitor, Var}
 import feh.tec.cvis.common.AreaDescriptor.{HasStatistics, SingleChannel}
 import feh.tec.cvis.common.ChannelDescriptor.Statistics
 import feh.tec.cvis.common.cv.Helper._
-import feh.tec.cvis.common.cv.describe.CallHistory.ArgEntry
+import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
 import feh.tec.cvis.common.cv.describe.{CallHistory, CallDescriptor, CallHistoryContainer, ArgDescriptor}
 import feh.tec.cvis.common.cv.describe.ArgModifier.MinCap
 import feh.tec.cvis.common.{AreaDescriptor, ChannelDescriptor, ImageDescriptor}
@@ -47,7 +47,7 @@ trait DescriptorsSupport {
 
       def classTag    = scala.reflect.classTag[Seq[(Point, ADescriptor)]]
 
-      def params: Set[ArgEntry[_]] = Set( ArgEntry(DescriptorSideSize, descriptorSideSize.get) )
+      def params: Set[ArgEntry[_]] = Set( TypedArgEntry(DescriptorSideSize, descriptorSideSize.get) )
 
       def callDescriptor: CallDescriptor[Seq[(Point, ADescriptor)]] = CallDescriptor("descriptors")
 
