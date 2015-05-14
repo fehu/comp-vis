@@ -16,6 +16,7 @@ import feh.tec.cvis.gui.configurations.ConfigBuildHelper
 import org.opencv.core.{Mat, Point}
 import feh.tec.cvis.common.cv.Helper._
 
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Future}
 import scala.swing._
@@ -86,10 +87,14 @@ trait UserSupport {
 
       lazy val searchPrecisionControl = mkNumericControl(SearchPrecision)(searchPrecision, searchPrecision = _) |> fixPreferredSize
 
-      lazy val showCurrentMatchTrigger       = triggerFor(showCurrentMatch)         .button("Current match")
-      lazy val showAllMatchesForImageTrigger = triggerFor(showAllMatchesForImage()) .button("All matches for image")
+      lazy val showCurrentMatchTrigger       = triggerFor(showCurrentMatch())               .button("Current match")
+      lazy val showAllMatchesForImageTrigger = triggerFor(showAllMatchesForImage())         .button("All matches for image")
+      lazy val showCrossCorrelationTrigger   = triggerFor(showCrossCorrelationsForImage())  .button("Cross-correlation matches")
 
-      lazy val showPanel = panel.box(_.Horizontal)(showCurrentMatchTrigger -> noId, showAllMatchesForImageTrigger -> noId)
+      lazy val showPanel = panel.box(_.Horizontal)( showCurrentMatchTrigger       -> noId
+                                                  , showAllMatchesForImageTrigger -> noId
+                                                  , showCrossCorrelationTrigger   -> noId
+                                                  )
 
       lazy val foundInfo = Monitor.forTable(matches, new Table())(
         columns = "UUID" :: "Point" :: "Matched Image" :: "Matched Points" :: Nil
@@ -185,6 +190,55 @@ trait UserSupport {
             p => gray.draw.circle(p.swap, 2, Color.red, thickness = 2)
           }
           ImageFrame(toBufferImage(gray), ms.toSet, imageFrameHighlightActivationRadius).open()
+      }
+
+
+      def showCrossCorrelationsForImage() = currentSelection.groupBy(_._1).par.foreach{
+        case (id, _) =>
+          val descrCurr  = getSrc.value
+          val descrOther = fetchDescriptor(id)
+
+          assert(descrCurr.head._2.channelsCount == descrOther.descriptorChannels, "cannot compare")
+          assert(descrCurr.head._2.sideLength    == descrOther.sideLength,         "cannot compare")
+
+          val nccC = mutable.HashMap.empty[Point, mutable.HashMap[Point, Double]]
+          val nccO = mutable.HashMap.empty[Point, mutable.HashMap[Point, Double]]
+
+          val n = descrOther.sideLength * descrOther.sideLength
+
+          for{
+            (ipC, descrC) <- descrCurr
+            (ipO, descrO) <- descrOther.interestPoints
+          } {
+            val sumElems = for {
+              pC <- descrC.data
+              pO <- descrO.data
+            } yield (pC - descrC.mean) / descrC.std * (pO - descrO.mean) / descrO.std
+
+            val crossCorrelation = 1.0 / (n-1) * sumElems.sum
+            nccC.getOrElseUpdate(ipC, new mutable.HashMap()) += ipO -> crossCorrelation
+            nccO.getOrElseUpdate(ipO, new mutable.HashMap()) += ipC -> crossCorrelation
+          }
+
+          val nccBestC = nccC.mapValues(_.maxBy(_._2))
+          val nccBestO = nccO.mapValues(_.maxBy(_._2))
+
+          val nccBestMatches = mutable.HashMap.empty[Point, Point]
+
+          for{
+            (curr, (other, _)) <- nccBestC
+            if nccBestO(other)._1 == curr
+          } nccBestMatches += curr -> other
+
+          println("nccBestMatches = " + nccBestMatches)
+
+          val nccBestMatchesInv = nccBestMatches.map(_.swap).toMap
+
+          val gray  = toGray(imageToMat(descrOther), BufferedImageColor.mode(descrOther.javaType))
+
+          nccBestMatchesInv.keySet.foreach{ p => gray.draw.circle(p.swap, 2, Color.blue, thickness = 2) }
+
+          ImageFrame(toBufferImage(gray), nccBestMatchesInv.keySet.map(_.pairInt), imageFrameHighlightActivationRadius).open()
       }
 
       
