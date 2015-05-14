@@ -3,6 +3,7 @@ package feh.tec.cvis.common.cv
 import feh.util._
 import org.opencv.core._
 
+import scala.collection.convert.decorateAsScala._
 import scala.language.implicitConversions
 import scala.math.Numeric.{DoubleIsFractional, FloatIsFractional, IntIsIntegral}
 import scala.reflect.ClassTag
@@ -69,6 +70,14 @@ object Helper{
         Core.normalize(mat, dist)
         dist
     }
+  }
+
+  implicit class MatOfPointWrapper(mat: MatOfPoint){
+    def toBuffer = mat.toList.asScala
+  }
+
+  implicit class MatOfKeyPointWrapper(mat: MatOfKeyPoint){
+    def toBuffer = mat.toList.asScala
   }
 
   implicit class Array2DWrapper[T](arr: Array2D[T]){

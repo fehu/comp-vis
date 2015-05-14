@@ -22,7 +22,8 @@ import scala.concurrent.duration._
 import scala.swing.Swing._
 
 object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 -> 800)
-  with HarrisSupport 
+  with HarrisSupport
+  with SURFSupport
   with KMeansSupport
   with GroupingSupport
   with DescriptorsSupport
@@ -43,6 +44,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with FrameExec
       with HistorySupport
       with HarrisSupportFrame
+      with SURFSupportFrame
       with KMeansSupportFrame
       with GroupingSupportFrame
       with DescriptorsSupportFrame
@@ -77,6 +79,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       lazy val configurations: Seq[(String, Config)] = Seq(
           "harris"      -> HarrisPanel
+        , "SURF"        -> SURFPanel
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
@@ -85,6 +88,10 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         , "user"        -> UserPanel
       )
 
+
+      object SURFPanel extends SURFPanel{
+        def getSrc: CallHistoryContainer[Mat] = CallHistoryContainer.empty(originalMat)
+      }
 
 
       object GroupingPanel extends GroupingPanel{
@@ -172,7 +179,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       object DescriptorsPanel extends DescriptorsPanel{
         def getSrc: CallHistoryContainer[(Mat, Set[Point])] = distinctInterestPoints.get
-                .affect(CallHistory.Entry("mk points from pairs"))(pts => originalGray -> pts.map(x => x: Point))
+                .affect(CallHistory.Entry("mk points from pairs"))(pts => originalInGrayScale -> pts.map(x => x: Point))
       }
 
 

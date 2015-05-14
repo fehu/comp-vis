@@ -15,12 +15,13 @@ import feh.tec.cvis.gui.configurations.{ConfigBuildHelper, Harris}
 import feh.util._
 import org.opencv.core.{Point, Mat}
 
-trait HarrisSupport extends Harris{
+trait HarrisSupport extends Harris with InterestPointSearchSupport{
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper =>
 
   trait HarrisSupportFrame
     extends ConfigurationsPanelBuilder
     with HistorySupport
+    with InterestPointSearchSupportFrame
     with HarrisGUI
     with ColorConverting
   {
@@ -29,8 +30,6 @@ trait HarrisSupport extends Harris{
           with LayoutDSL
           with GuiFrame
           with ConfigBuildHelperGUI =>
-
-    protected var originalGray: Mat = null
 
     type HarrisResult  = List[((Int, Int), Double)]
     type HarrisFilterd = List[Point]
@@ -47,6 +46,7 @@ trait HarrisSupport extends Harris{
       with HarrisConfigurationPanelExec
       with MatPanelExec
       with PanelExecSimple[Mat, Mat]
+      with InterestPointSearchPanel
     {
       panel =>
 
@@ -132,17 +132,15 @@ trait HarrisSupport extends Harris{
         nextStep =>
           params =>
             src =>
-              val cvt = ColorConversion(imageColorType, ColorMode.Gray)
-              cvtColor(src, cvt) |> {
+              withGrayImg(src){
                 grayImg =>
-                  originalGray = grayImg.convert(cvt.inverse)
                   nextStep()
                   val responses = responseFunc.fromGray(grayImg).toList
                   harrisResult set CallHistoryContainer(responses, CallHistory.Empty)            // TODO !!! no side effects should be present here
                   nextStep()
                   setHarrisFiltered( filterHarris(responses) )
-                grayImg
-              }
+                  grayImg
+             }
       }
 
 //        override lazy val runner: Runner[Params, Mat, Mat] = Runner(
@@ -174,7 +172,7 @@ trait HarrisSupport extends Harris{
         )
 
       def drawHarris() = {
-        if(repaint_?.get) Option(originalGray) map (_.clone()) foreach setImageMat
+        if(repaint_?.get) Option(originalInGrayScale) map (_.clone()) foreach setImageMat
         affectImageMat(img => harrisFiltered.get.value.foreach{ p => img.draw.circle(p.swap, 1, Color.red) })
         repaintImage()
       }
