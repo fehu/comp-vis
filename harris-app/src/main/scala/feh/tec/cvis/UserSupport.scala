@@ -27,6 +27,7 @@ trait UserSupport {
   trait UserSupportFrame extends ConfigurationsPanelBuilder {
     frame: GenericSimpleAppFrame with FrameExec with LayoutDSL with ConfigBuildHelperGUI =>
 
+    //                 my point    matched uuid,name   matched points
     type Matches = Map[(Int, Int), Map[(UUID, String), Seq[(Int, Int)]]]
 
     lazy val matches: Var[Matches] = Var(Map())
@@ -126,10 +127,31 @@ trait UserSupport {
       
       def fetchDescriptor(id: UUID): IDescriptor
       
-      case class ImageFrame(img: BufferedImage, pointsOfInterest: Set[(Int, Int)], hRadius: Int) extends Frame{
+      case class ImageFrame( img: BufferedImage
+                           , pointsOfInterest: Set[(Int, Int)]
+                           , hRadius: Int
+                           , connectedOpt: Option[(SimplePreview with PreviewHighlights, scala.swing.Point => scala.swing.Point)] = None
+                           )
+        extends Frame
+      {
 
-        protected def highlighting(points: Set[scala.swing.Point]) = {}
-        protected def stoppingHighlighting() = {}
+        protected def highlighting(point: scala.swing.Point) = connectedOpt map {
+          case (preview, connectedPoint) =>
+            val pt = connectedPoint(point)
+            val hPts = for{
+              x <- -hRadius to hRadius
+              y <- -hRadius to hRadius
+              if x*x + y*y < hRadius*hRadius
+            } yield (pt.x + x, pt.y + y) : scala.swing.Point
+
+            preview.highlights set hPts.toSet
+            preview.repaint()
+        }
+        protected def stoppingHighlighting() = connectedOpt map {
+          case (preview, _) =>
+            preview.highlights set Set()
+            preview.repaint()
+        }
 
         contents = new SimplePreview with PreviewHighlights with PreviewMouseReaction{
           def img = ImageFrame.this.img
@@ -148,10 +170,9 @@ trait UserSupport {
           def onMouseMovement = {
             case (p, _) =>
               highlightCache.find(_._2 contains (p.y, p.x)).map{
-                case (_, points) =>
-                  val pts = points.map(x => x: scala.swing.Point)
-                  highlights set pts
-                  highlighting(pts)
+                case (pt, around) =>
+                  highlights set around.map(x => x: scala.swing.Point)
+                  highlighting(pt)
                   this.repaint()
               }.getOrElse{
                 if (highlights.get.nonEmpty) {
@@ -184,19 +205,33 @@ trait UserSupport {
 
             val img = toBufferImage(gray)
 
-            ImageFrame(img, ms.toSet, imageFrameHighlightActivationRadius).open()
+            ImageFrame(img,
+                       ms.toSet,
+                       imageFrameHighlightActivationRadius,
+                       Some((modified.asInstanceOf[SimplePreview with PreviewHighlights],
+                            (_: scala.swing.Point) => point: scala.swing.Point))
+            ).open()
         }
 
       def showAllMatchesForImage() = currentSelection.groupBy(_._1).par.foreach{
         case (id, _) =>
           val descr = fetchDescriptor(id)
           val gray  = toGray(imageToMat(descr), BufferedImageColor.mode(descr.javaType))
-          val ms    = matches.get.values.flatMap(_.filter(_._1._1 == id).values).flatten.toList.distinct
+          val mFilt = matches.get.map{
+            case (pt, mp) => pt -> mp.filter(_._1._1 == id).values.flatten
+          }
+          val ms = mFilt.flatMap(_._2).toList.distinct
+          val ptsMap = mFilt.flatMap{ case (pt, mpts) => mpts.map(_ -> pt) }
 
           ms.foreach{
             p => gray.draw.circle(p.swap, 2, Color.red, thickness = 2)
           }
-          ImageFrame(toBufferImage(gray), ms.toSet, imageFrameHighlightActivationRadius).open()
+          ImageFrame(toBufferImage(gray),
+                     ms.toSet,
+                     imageFrameHighlightActivationRadius,
+                     Some((modified.asInstanceOf[SimplePreview with PreviewHighlights],
+                           (pt: scala.swing.Point) =>  ptsMap(pt.x -> pt.y): scala.swing.Point))
+          ).open()
       }
 
 
@@ -245,19 +280,12 @@ trait UserSupport {
 
           nccBestMatchesInv.keySet.foreach{ p => gray.draw.circle(p.swap, 2, Color.blue, thickness = 2) }
 
-          val pts = nccBestMatchesInv.keySet.map(_.pairInt)
-
-          new ImageFrame(toBufferImage(gray), pts, imageFrameHighlightActivationRadius){
-            override protected def highlighting(points: Set[scala.swing.Point]) = {
-              modified.asInstanceOf[SimplePreview with PreviewHighlights].highlights set points
-              modified.repaint()
-            }
-            override protected def stoppingHighlighting() = {
-              modified.asInstanceOf[SimplePreview with PreviewHighlights].highlights set Set()
-              modified.repaint()
-            }
-
-          }.open()
+          new ImageFrame(toBufferImage(gray),
+                         nccBestMatchesInv.keySet.map(_.pairInt),
+                         imageFrameHighlightActivationRadius,
+                         Some((modified.asInstanceOf[SimplePreview with PreviewHighlights],
+                              (pt: scala.swing.Point) => nccBestMatchesInv(new Point(pt.x, pt.y)).pairInt: scala.swing.Point ))
+          ).open()
       }
 
       
