@@ -127,6 +127,10 @@ trait UserSupport {
       def fetchDescriptor(id: UUID): IDescriptor
       
       case class ImageFrame(img: BufferedImage, pointsOfInterest: Set[(Int, Int)], hRadius: Int) extends Frame{
+
+        protected def highlighting(points: Set[scala.swing.Point]) = {}
+        protected def stoppingHighlighting() = {}
+
         contents = new SimplePreview with PreviewHighlights with PreviewMouseReaction{
           def img = ImageFrame.this.img
 
@@ -145,11 +149,14 @@ trait UserSupport {
             case (p, _) =>
               highlightCache.find(_._2 contains (p.y, p.x)).map{
                 case (_, points) =>
-                  highlights set points.map(x => x: scala.swing.Point)
+                  val pts = points.map(x => x: scala.swing.Point)
+                  highlights set pts
+                  highlighting(pts)
                   this.repaint()
               }.getOrElse{
                 if (highlights.get.nonEmpty) {
                   highlights set Set()
+                  stoppingHighlighting()
                   this.repaint()
                 }
               }
@@ -238,7 +245,19 @@ trait UserSupport {
 
           nccBestMatchesInv.keySet.foreach{ p => gray.draw.circle(p.swap, 2, Color.blue, thickness = 2) }
 
-          ImageFrame(toBufferImage(gray), nccBestMatchesInv.keySet.map(_.pairInt), imageFrameHighlightActivationRadius).open()
+          val pts = nccBestMatchesInv.keySet.map(_.pairInt)
+
+          new ImageFrame(toBufferImage(gray), pts, imageFrameHighlightActivationRadius){
+            override protected def highlighting(points: Set[scala.swing.Point]) = {
+              modified.asInstanceOf[SimplePreview with PreviewHighlights].highlights set points
+              modified.repaint()
+            }
+            override protected def stoppingHighlighting() = {
+              modified.asInstanceOf[SimplePreview with PreviewHighlights].highlights set Set()
+              modified.repaint()
+            }
+
+          }.open()
       }
 
       

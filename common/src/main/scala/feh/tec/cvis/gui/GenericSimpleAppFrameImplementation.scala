@@ -109,10 +109,15 @@ trait GenericSimpleAppFrameImplementation extends GenericSimpleApp{
 
     def setDebugBorder(c: Component, color: Color): Unit = if(LayoutDebug) c.border = Swing.LineBorder(color)
 
-    type Preview = SimplePreview
+    type Preview = SimplePreview with PreviewHighlights
 
 //    val original: Preview = new SimplePreview{ def img = originalImage }
-    val modified: Preview = new SimplePreview{ def img = modifiedImage }
+    
+    val modified: Preview = new SimplePreview with PreviewHighlights{
+      def img = modifiedImage
+
+      def highlightColor = Color.red
+    }
 
     this.title = frameTitle
 
