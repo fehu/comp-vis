@@ -86,6 +86,7 @@ trait ConfigBuildHelper extends GenericConfigurationGUI {
         def toNumber(n: N) = n match {
           case b: BigDecimal  => b.bigDecimal
           case b: BigInt      => b.bigInteger
+          case x: Float       => Float.box(x)
           case x: Double      => Double.box(x)
           case i: Int         => Int.box(i)
         }
