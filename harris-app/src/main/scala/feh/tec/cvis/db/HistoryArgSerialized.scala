@@ -15,6 +15,7 @@ object HistoryArgSerialized{
     val (className, valueOpt) = sArg.tag match {
       case "Int"                      => "scala.Int"    -> Some(sArg.value.toInt)
       case "Double"                   => "scala.Double" -> Some(sArg.value.toDouble)
+      case "Float"                    => "scala.Float"  -> Some(sArg.value.toFloat)
       case c@"scala.math.BigDecimal"  => c              -> Some(BigDecimal(sArg.value))
       case another                    => another        -> None
 
