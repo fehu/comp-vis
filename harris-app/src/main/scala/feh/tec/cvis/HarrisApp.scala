@@ -136,6 +136,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
           case object None      extends Source{ override def toString = "[None]" }
           case object Grouping  extends Source{ override def toString = "grouping" }
           case object KMeans    extends Source{ override def toString = "k-means" }
+          case object Features  extends Source{ override def toString = "features detection" }
 
           object Descriptor extends ArgDescriptor[Source]("Source", null)
         }
@@ -155,6 +156,9 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         clusteringResult       .onChange(l => if(l.value.isEmpty) sourcesAvailable.affect(_ - Source.KMeans)
                                               else                sourcesAvailable.affect(_ + Source.KMeans))
 
+        featureDetectionResultFiltered.onChange(l => if(l.value.isEmpty) sourcesAvailable.affect(_ - Source.Features)
+                                                     else                sourcesAvailable.affect(_ + Source.Features))
+
         sourcesAvailable.onChange(_ => sourceControl.component.tryUpdate())
 
         lazy val sourceControl = controlForSeq(sourcesAvailable.get.toSeq).dropDownList(gcSrc.set)
@@ -168,6 +172,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
         def getSrc: CallHistoryContainer[List[Point]] = gcSrc.get match {
           case Source.Grouping  => groupsCentersWithPoints.get.affect(CallHistory.Entry("take group center"))(_.map(_._1))
           case Source.KMeans    => clusteringResult.get.affect(CallHistory.Entry("take cluster centers"))(_.centers)
+          case Source.Features  => featureDetectionResultFiltered.get.affect(CallHistory.Entry("take the points"))(_.map(_.pt.swap: Point))
           case Source.None      => CallHistoryContainer.empty(Nil)
         }
 

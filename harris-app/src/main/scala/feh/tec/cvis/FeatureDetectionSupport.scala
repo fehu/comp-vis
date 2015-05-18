@@ -6,11 +6,12 @@ import breeze.stats.DescriptiveStats
 import feh.dsl.swing2.Var
 import feh.tec.cvis.common.cv.Helper._
 import feh.tec.cvis.common.cv.describe.ArgModifier.MaxCap
-import feh.tec.cvis.common.cv.describe.CallHistory.{TypedArgEntry, ArgEntry}
+import feh.tec.cvis.common.cv.describe.CallHistory.{ArgEntry, TypedArgEntry}
 import feh.tec.cvis.common.cv.describe._
 import feh.tec.cvis.common.cv.{Drawing, FeatureDetection, FeatureDetectionType, FeatureDetectionTypeModifier, FeatureDetectionTypeRoot}
 import feh.tec.cvis.gui.GenericSimpleAppFrameImplementation
 import feh.tec.cvis.gui.configurations.ConfigBuildHelper
+import feh.tec.cvis.gui.configurations.GuiArgModifier.Step
 import feh.util._
 import org.opencv.core.{KeyPoint, Mat}
 import org.opencv.features2d.FeatureDetector
@@ -64,7 +65,7 @@ trait FeatureDetectionSupport {
 
       object DetectorType     extends ArgDescriptor[FeatureDetectionType]        ("Feature detector", null)
       object DetectorModifier extends ArgDescriptor[FeatureDetectionTypeModifier]("Feature detector modifier", null)
-      object Threshold        extends ArgDescriptor[Float]                       ("Threshold", "in %", ArgModifier.NonNegative, MaxCap(1))
+      object Threshold        extends ArgDescriptor[Float]                       ("Threshold", "in %", ArgModifier.NonNegative, MaxCap(1), Step(0.01f))
 
       lazy val detectorTypeChooser      = mkListControl(DetectorType,     detectorsSupported)   (detectorType.set,     _.toString)
       lazy val detectorModifierChooser  = mkListControl(DetectorModifier, feature.modifier.list)(detectorModifier.set, _.toString)
