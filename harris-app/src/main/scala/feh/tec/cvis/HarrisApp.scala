@@ -24,7 +24,7 @@ import scala.swing.Swing._
 
 object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 -> 800)
   with HarrisSupport
-  with SURFSupport
+  with FeatureDetectionSupport
   with KMeansSupport
   with GroupingSupport
   with DescriptorsSupport
@@ -45,7 +45,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       with FrameExec
       with HistorySupport
       with HarrisSupportFrame
-      with SURFSupportFrame
+      with FeatureDetectionSupportFrame
       with KMeansSupportFrame
       with GroupingSupportFrame
       with DescriptorsSupportFrame
@@ -80,7 +80,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       lazy val configurations: Seq[(String, Config)] = Seq(
           "harris"      -> HarrisPanel
-        , "SURF"        -> SURFPanel
+        , "features"    -> FeatureDetectionPanel$
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
@@ -90,7 +90,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       )
 
 
-      object SURFPanel extends SURFPanel{
+      object FeatureDetectionPanel$ extends FeatureDetectionPanel{
         def getSrc: CallHistoryContainer[Mat] = CallHistoryContainer.empty(originalMat)
       }
 

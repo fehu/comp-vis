@@ -11,7 +11,7 @@ object FeatureDetection extends FeatureDetection
 trait FeatureDetection{
   type MatWithMaskMap = Map[Mat, Mat]
 
-  def create(tpe: FeatureDetectionType) = FeatureDetector.create(tpe.value)
+  def create(tpe: FeatureDetectionTypeRoot) = FeatureDetector.create(tpe.value)
 
   def feature = FeatureDetectionType
 
@@ -51,7 +51,13 @@ trait FeatureDetection{
   }
 }
 
-sealed trait FeatureDetectionTypeRoot{ val value: Int }
+sealed trait FeatureDetectionTypeRoot{
+  val value: Int
+
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case that: FeatureDetectionTypeRoot => this.value == that.value
+  }
+}
 sealed abstract class FeatureDetectionType(val value: Int) extends FeatureDetectionTypeRoot
 sealed abstract class FeatureDetectionTypeModifier(val modifier: Int)
 
@@ -77,17 +83,24 @@ object FeatureDetectionType {
   case object Dense       extends FeatureDetectionType(10)
   case object BRISK       extends FeatureDetectionType(11)
 
-  case object GridDetector    extends FeatureDetectionTypeModifier(1000)
-  case object PyramidDetector extends FeatureDetectionTypeModifier(2000)
-  case object DynamicDetector extends FeatureDetectionTypeModifier(3000)
+  object modifier{
+    case object None            extends FeatureDetectionTypeModifier(0)
+    case object GridDetector    extends FeatureDetectionTypeModifier(1000)
+    case object PyramidDetector extends FeatureDetectionTypeModifier(2000)
+    case object DynamicDetector extends FeatureDetectionTypeModifier(3000)
+
+    def list = None :: GridDetector :: PyramidDetector :: DynamicDetector :: Nil
+  }
 
   implicit class FeatureDetectionTypeModiftWrapper(tpe: FeatureDetectionType) {
     def ::(mod: FeatureDetectionTypeModifier) = FeatureDetectionTypeModified(tpe, mod)
   }
+
+  def list = Fast :: Star :: SIFT :: SURF :: ORB :: MSER :: GFTT :: Harris :: SimpleBlob :: Dense :: BRISK :: Nil
 }
 
 case class FeatureDetectionTypeModified(tpe: FeatureDetectionType, modifier: FeatureDetectionTypeModifier)
   extends FeatureDetectionTypeRoot
 {
-  lazy val value: Int = tpe.value + modifier.modifier
+  lazy val value = tpe.value + modifier.modifier
 }
