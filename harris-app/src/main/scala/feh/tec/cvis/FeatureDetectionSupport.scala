@@ -49,7 +49,8 @@ trait FeatureDetectionSupport {
       def params: Set[ArgEntry[_]] = Set()
 
 
-      protected def detectorsSupported = feature.list.filter(_ != feature.Star)
+      protected def detectorsUnsupported = Set(feature.Star, feature.SURF, feature.SIFT, feature.Dense)
+      protected def detectorsSupported = feature.list.filterNot(detectorsUnsupported.contains)
 
       val detectorType      = Var[FeatureDetectionType]        (detectorsSupported.head)
       val detectorModifier  = Var[FeatureDetectionTypeModifier](feature.modifier.None)

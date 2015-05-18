@@ -80,7 +80,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
 
       lazy val configurations: Seq[(String, Config)] = Seq(
           "harris"      -> HarrisPanel
-        , "features"    -> FeatureDetectionPanel$
+        , "features"    -> FeatureDetectionPanel
         , "grouping"    -> GroupingPanel
         , "k-means"     -> KMeansPanel
         , "distinct"    -> DistinctPanel
@@ -90,7 +90,7 @@ object HarrisApp extends DefaultApp("Harris interest points", 300 -> 300, 600 ->
       )
 
 
-      object FeatureDetectionPanel$ extends FeatureDetectionPanel{
+      object FeatureDetectionPanel extends FeatureDetectionPanel{
         def getSrc: CallHistoryContainer[Mat] = CallHistoryContainer.empty(originalMat)
       }
 
