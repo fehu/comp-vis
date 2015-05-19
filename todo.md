@@ -13,3 +13,7 @@
 - [ ] draw shouldn't be called from setResult, it needs it's own mechanism 
 - [ ] refactor HarrisPanel to actually use getSrc, setResult
 - [ ] use params to avoid concurrency problems
+
+- [ ] DB: FK error on history insert (HistoryArgs)
+- [ ] Image Preview: scroll doesn't work
+- [ ] UserSupport: showCrossCorrelationsForImage: change `max` to `filterMax`

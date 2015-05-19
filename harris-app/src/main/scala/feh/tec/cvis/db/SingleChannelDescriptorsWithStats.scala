@@ -89,14 +89,14 @@ object SingleChannelDescriptorsWithStats{
     def classTag      = column[String]("tag")
     def value         = column[String]("value")
 
-    def descriptor = foreignKey("descriptor_fk_HistoryArgs", descriptorId, descriptorsHistory)(_.descriptorId,
-                                                                                   onUpdate=ForeignKeyAction.Restrict,
-                                                                                   onDelete=ForeignKeyAction.Restrict
-                                                                                  )
-    def entryFK    = foreignKey("entry_fk", entry, descriptorsHistory)(_.entry,
-                                                                       onUpdate=ForeignKeyAction.Restrict,
-                                                                       onDelete=ForeignKeyAction.Restrict
-                                                                      )
+//    def descriptor = foreignKey("descriptor_fk_HistoryArgs", descriptorId, descriptorsHistory)(_.descriptorId,
+//                                                                                   onUpdate=ForeignKeyAction.Restrict,
+//                                                                                   onDelete=ForeignKeyAction.Restrict
+//                                                                                  )
+//    def entryFK    = foreignKey("entry_fk", entry, descriptorsHistory)(_.entry,
+//                                                                       onUpdate=ForeignKeyAction.Restrict,
+//                                                                       onDelete=ForeignKeyAction.Restrict
+//                                                                      )
     def idx = index("idx_HistoryArgs", (descriptorId, entry), unique = false)
 
     def arg = (name, classTag, value) <> ((HistoryArgSerialized.apply _).tupled, HistoryArgSerialized.unapply)

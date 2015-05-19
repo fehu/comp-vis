@@ -263,7 +263,7 @@ trait UserSupport {
           }
 
           val nccBestC = nccC.mapValues(_.maxBy(_._2))
-          val nccBestO = nccO.mapValues(_.maxBy(_._2))
+          val nccBestO = nccO.mapValues(_.maxBy(_._2)) // todo: change to filtermax
 
           val nccBestMatches = mutable.HashMap.empty[Point, Point]
 

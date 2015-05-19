@@ -18,7 +18,6 @@ import org.opencv.features2d.FeatureDetector
 
 import scala.collection.mutable
 
-/** ! SIFT and SURF are non-free ! */
 trait FeatureDetectionSupport {
   env: GenericSimpleAppFrameImplementation with ConfigBuildHelper with Drawing with InterestPointSearchSupport =>
 
